@@ -6,7 +6,7 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = "llama-3.1-8b-instant"  # Fast and free Groq model
 
 
-CREDENTIALS_FILE = os.path.expanduser("~/.niks/credentials")
+CREDENTIALS_FILE = os.path.expanduser("~/.nix/credentials")
 
 
 def get_api_key():

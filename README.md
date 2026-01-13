@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">⚡ Niks</h1>
+  <h1 align="center">⚡ Nix</h1>
   <p align="center">
     <strong>AI-powered CLI for Spring Boot projects</strong>
   </p>
@@ -23,7 +23,7 @@
 | 🔍 **Smart Detection** | Automatically identifies Spring Boot projects (Maven & Gradle) |
 | 🤖 **AI-Powered** | Uses Groq LLM for intelligent build file analysis |
 | 📊 **Project Tracking** | Monitors structure changes and tracks metadata |
-| 🚀 **Simple CLI** | Just type `niks` - that's it |
+| 🚀 **Simple CLI** | Just type `nix` - that's it |
 
 ---
 
@@ -31,25 +31,49 @@
 
 ### 1. Install
 
+**Option A: Using pipx (Recommended)**
 ```bash
-git clone https://github.com/nikhil/niks.git
-cd niks
+git clone https://github.com/nikhil/nix.git
+pipx install -e /path/to/nix
+```
+
+**Option B: Using pip**
+```bash
+git clone https://github.com/nikhil/nix.git
+cd nix
 pip install .
 ```
+
+> **Note:** pipx installs the tool in an isolated environment and makes it globally available without activating a virtual environment.
 
 ### 2. Configure
 
 Get your free API key from **[Groq Console](https://console.groq.com/keys)**
 
 ```bash
-niks config YOUR_API_KEY
+nix config YOUR_API_KEY
 ```
 
-### 3. Use
+### 3. Initialize Your Project
+
+Navigate to your Spring Boot project and run:
 
 ```bash
 cd your-springboot-project
-niks
+nix
+```
+
+On first run, `nix` will:
+- ✓ Detect if it's a Spring Boot project (checks for `pom.xml` or `build.gradle`)
+- ✓ Analyze your build file using AI
+- ✓ Create a `.nix/` folder to store project metadata
+- ✓ Scan and count your project files
+- ✓ Save project configuration
+
+### 4. Check Status Anytime
+
+```bash
+nix status
 ```
 
 ---
@@ -57,11 +81,11 @@ niks
 ## 📖 Commands
 
 ```
-niks                    Initialize or show project status
-niks config <key>       Configure your Groq API key
-niks status             Display project information
-niks analyze            Analyze your code (coming soon)
-niks refresh            Update project index (coming soon)
+nix                    Initialize or show project status
+nix config <key>       Configure your Groq API key
+nix status             Display project information
+nix analyze            Analyze your code (coming soon)
+nix refresh            Update project index (coming soon)
 ```
 
 ---
@@ -70,18 +94,18 @@ niks refresh            Update project index (coming soon)
 
 ```bash
 $ cd my-springboot-app
-$ niks
+$ nix
 
-Initializing niks...
+Initializing nix...
 Checking if this is a Spring Boot project...
 ✓ Detected Spring Boot 3.2.0
 Scanning project structure...
-✓ Niks initialized successfully.
+✓ Nix initialized successfully.
 Project contains 15 Java files.
 
 Next steps:
-  Run 'niks analyze' to analyze your code
-  Run 'niks status' to check project status
+  Run 'nix analyze' to analyze your code
+  Run 'nix status' to check project status
 ```
 
 ---
@@ -90,14 +114,14 @@ Next steps:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                         niks                            │
+│                         nix                            │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │   1. 📁 Detect      Find pom.xml or build.gradle       │
 │                              ↓                          │
 │   2. 🤖 Analyze     Send to Groq LLM for analysis      │
 │                              ↓                          │
-│   3. 💾 Store       Save metadata in .niks/ folder     │
+│   3. 💾 Store       Save metadata in .nix/ folder     │
 │                              ↓                          │
 │   4. 👀 Monitor     Track changes over time            │
 │                                                         │
@@ -109,7 +133,7 @@ Next steps:
 ## 📁 Project Structure
 
 ```
-niks/
+nix/
 ├── 📄 main.py              # CLI entry point
 ├── 📄 config.py            # Configuration management
 ├── 📁 commands/

@@ -1,12 +1,12 @@
 import json
 import os
-from config import get_niks_path
+from config import get_nix_path
 
 
 def save_data(filename, data):
-    """Save data to .niks folder"""
+    """Save data to .nix folder"""
     try:
-        filepath = os.path.join(get_niks_path(), filename)
+        filepath = os.path.join(get_nix_path(), filename)
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
         return True
@@ -15,9 +15,9 @@ def save_data(filename, data):
 
 
 def load_data(filename):
-    """Load data from .niks folder"""
+    """Load data from .nix folder"""
     try:
-        filepath = os.path.join(get_niks_path(), filename)
+        filepath = os.path.join(get_nix_path(), filename)
         if not os.path.exists(filepath):
             return None
 

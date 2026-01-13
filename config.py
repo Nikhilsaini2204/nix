@@ -2,7 +2,7 @@ import os
 import json
 
 # Constants
-NIKS_FOLDER = ".niks"
+NIX_FOLDER = ".nix"
 CONFIG_FILE = "config.json"
 GITIGNORE_FILE = ".gitignore"
 
@@ -12,35 +12,35 @@ def get_project_root():
     return os.getcwd()
 
 
-def get_niks_path():
-    """Get full path to .niks folder"""
-    return os.path.join(get_project_root(), NIKS_FOLDER)
+def get_nix_path():
+    """Get full path to .nix folder"""
+    return os.path.join(get_project_root(), NIX_FOLDER)
 
 
 def get_config_path():
     """Get full path to config.json"""
-    return os.path.join(get_niks_path(), CONFIG_FILE)
+    return os.path.join(get_nix_path(), CONFIG_FILE)
 
 
-def niks_exists():
-    """Check if .niks folder exists"""
-    return os.path.exists(get_niks_path())
+def nix_exists():
+    """Check if .nix folder exists"""
+    return os.path.exists(get_nix_path())
 
 
-def create_niks_folder():
-    """Create .niks directory and .gitignore"""
+def create_nix_folder():
+    """Create .nix directory and .gitignore"""
     try:
-        niks_path = get_niks_path()
-        os.makedirs(niks_path, exist_ok=True)
+        nix_path = get_nix_path()
+        os.makedirs(nix_path, exist_ok=True)
 
         # Create .gitignore to ignore all contents
-        gitignore_path = os.path.join(niks_path, GITIGNORE_FILE)
+        gitignore_path = os.path.join(nix_path, GITIGNORE_FILE)
         with open(gitignore_path, 'w') as f:
             f.write("*\n")
 
         return True
     except Exception as e:
-        raise Exception(f"Failed to create .niks folder: {str(e)}")
+        raise Exception(f"Failed to create .nix folder: {str(e)}")
 
 
 def load_config():

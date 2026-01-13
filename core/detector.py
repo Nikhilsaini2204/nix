@@ -61,8 +61,8 @@ def count_java_files():
     project_root = os.getcwd()
 
     for root, dirs, files in os.walk(project_root):
-        # Skip .niks folder
-        if '.niks' in root:
+        # Skip .nix folder
+        if '.nix' in root:
             continue
         for file in files:
             if file.endswith('.java'):

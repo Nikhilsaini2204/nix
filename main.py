@@ -2,7 +2,7 @@
 import os
 import sys
 
-# Add niks directory to path so imports work from anywhere
+# Add nix directory to path so imports work from anywhere
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from commands import init, status
@@ -10,16 +10,16 @@ from llm.client import get_api_key, save_api_key
 
 
 def main():
-    """Main entry point for niks"""
+    """Main entry point for nix"""
     try:
         # Parse command line arguments
         args = sys.argv[1:]
         command = args[0] if args else None
 
-        # Handle config command: niks config <api_key>
+        # Handle config command: nix config <api_key>
         if command == "config":
             if len(args) < 2:
-                print("Usage: niks config <your_groq_api_key>")
+                print("Usage: nix config <your_groq_api_key>")
                 print("Get your key at: https://console.groq.com/keys")
                 sys.exit(1)
             save_api_key(args[1])
@@ -30,13 +30,13 @@ def main():
         api_key = get_api_key()
         if not api_key:
             print("Error: API key not configured.")
-            print("Run: niks config <your_groq_api_key>")
+            print("Run: nix config <your_groq_api_key>")
             sys.exit(1)
 
-        # Check if .niks folder exists
-        from config import niks_exists
+        # Check if .nix folder exists
+        from config import nix_exists
 
-        if niks_exists():
+        if nix_exists():
             # Already initialized, show status
             status.run()
         else:

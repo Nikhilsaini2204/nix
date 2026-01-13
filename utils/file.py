@@ -12,7 +12,7 @@ def walk_directory(directory, skip_folders=None):
     skip_folders: list of folder names to skip
     """
     if skip_folders is None:
-        skip_folders = ['.niks', '.git', 'target', 'build', 'node_modules']
+        skip_folders = ['.nix', '.git', 'target', 'build', 'node_modules']
 
     for root, dirs, files in os.walk(directory):
         # Remove skip folders from dirs to prevent walking into them

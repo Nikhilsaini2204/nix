@@ -8,7 +8,7 @@ def run():
     config = load_config()
 
     if not config:
-        print("Error: Could not load niks configuration.")
+        print("Error: Could not load nix configuration.")
         print("Try reinitializing with a fresh setup.")
         return False
 
@@ -23,7 +23,7 @@ def run():
 
     if current_count != config['total_files']:
         print(f"\nProject structure changed: Now {current_count} Java files (was {config['total_files']})")
-        print("Run 'niks refresh' to update project index")
+        print("Run 'nix refresh' to update project index")
     else:
         print("\nProject structure unchanged.")
 
@@ -32,8 +32,8 @@ def run():
     save_config(config)
 
     print("\nAvailable commands:")
-    print("  niks analyze - Analyze your code")
-    print("  niks refresh - Update project index")
+    print("  nix analyze - Analyze your code")
+    print("  nix refresh - Update project index")
 
     return True
 

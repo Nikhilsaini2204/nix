@@ -1,11 +1,11 @@
 from datetime import datetime
-from config import create_niks_folder, save_config, get_default_config
+from config import create_nix_folder, save_config, get_default_config
 from core import detector
 
 
 def run():
     """Run initialization command"""
-    print("Initializing niks...")
+    print("Initializing nix...")
 
     # Check if Spring Boot project
     print("Checking if this is a Spring Boot project...")
@@ -22,9 +22,9 @@ def run():
     print("Scanning project structure...")
     java_file_count = detector.count_java_files()
 
-    # Create .niks folder
+    # Create .nix folder
     try:
-        create_niks_folder()
+        create_nix_folder()
     except Exception as e:
         print(f"Error: {str(e)}")
         return False
@@ -44,10 +44,10 @@ def run():
         return False
 
     # Success message
-    print("Niks initialized successfully.")
+    print("Nix initialized successfully.")
     print(f"Project contains {java_file_count} Java files.")
     print("\nNext steps:")
-    print("  Run 'niks analyze' to analyze your code")
-    print("  Run 'niks status' to check project status")
+    print("  Run 'nix analyze' to analyze your code")
+    print("  Run 'nix status' to check project status")
 
     return True
