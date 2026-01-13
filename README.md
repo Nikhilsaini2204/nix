@@ -39,7 +39,7 @@ pipx install -e /path/to/nix
 
 **Option B: Using pip**
 ```bash
-git clone https://github.com/nikhil/nix.git
+git clone https://github.com/Nikhilsaini2204/nix.git
 cd nix
 pip install .
 ```
