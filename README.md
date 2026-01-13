@@ -33,7 +33,7 @@
 
 **Option A: Using pipx (Recommended)**
 ```bash
-git clone https://github.com/nikhil/nix.git
+git clone https://github.com/Nikhilsaini2204/niks.git
 pipx install -e /path/to/nix
 ```
 
