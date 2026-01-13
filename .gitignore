@@ -1,0 +1,21 @@
+# Build artifacts
+niks.egg-info/
+dist/
+build/
+*.egg
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+venv/
+.venv/
