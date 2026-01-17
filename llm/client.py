@@ -1,9 +1,12 @@
 import os
+import json
 import requests
 from llm import prompts
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL = "llama-3.1-8b-instant"  # Fast and free Groq model
+MODEL = "llama-3.1-8b-instant"  # Fast model for simple tasks
+AGENT_MODEL = "llama-3.1-8b-instant"  # Primary model (500k tokens available)
+FALLBACK_MODEL = "llama-3.3-70b-versatile"  # Fallback model
 
 
 CREDENTIALS_FILE = os.path.expanduser("~/.nix/credentials")
@@ -107,3 +110,109 @@ def parse_springboot_response(response):
     version = matches[0] if matches else "Unknown"
 
     return True, version
+
+
+class RateLimitExhaustedError(Exception):
+    """Raised when Groq API daily quota is exhausted for all models"""
+    pass
+
+
+def call_groq_with_tools(messages, tools=None, retry_count=0, use_fallback=False):
+    """
+    Make API call to Groq with function calling support.
+
+    Args:
+        messages: List of message dicts with role and content
+        tools: List of tool definitions (OpenAI function calling format)
+        retry_count: Internal retry counter
+        use_fallback: Whether to use fallback model
+
+    Returns:
+        dict with:
+            - content: Text response (if no tool call)
+            - tool_calls: List of tool calls (if LLM wants to use tools)
+            - finish_reason: Why the response ended
+    """
+    import time
+
+    api_key = get_api_key()
+    current_model = FALLBACK_MODEL if use_fallback else AGENT_MODEL
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": current_model,
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 1024
+    }
+
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = "auto"
+
+    try:
+        response = requests.post(GROQ_API_URL, json=payload, headers=headers, timeout=60)
+
+        # Handle rate limiting (silently retry, then fail gracefully)
+        if response.status_code == 429:
+            # Try quick retry first (2 retries max, shorter wait)
+            if retry_count < 2:
+                wait_time = 0.5 * (retry_count + 1)  # 0.5s, 1s
+                time.sleep(wait_time)
+                return call_groq_with_tools(messages, tools, retry_count + 1, use_fallback)
+
+            # If primary model exhausted, try fallback model
+            if not use_fallback:
+                return call_groq_with_tools(messages, tools, retry_count=0, use_fallback=True)
+
+            # Both models exhausted
+            raise RateLimitExhaustedError(
+                "Groq API usage limit reached. Your daily token quota is exhausted.\n"
+                "Wait for your quota to reset or check usage at https://console.groq.com"
+            )
+
+        # Check for other errors and show details
+        if response.status_code >= 400:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", response.text)
+            except:
+                error_msg = response.text
+            raise Exception(f"API error ({response.status_code}): {error_msg}")
+
+        data = response.json()
+        choice = data["choices"][0]
+        message = choice["message"]
+
+        result = {
+            "content": message.get("content"),
+            "tool_calls": None,
+            "finish_reason": choice.get("finish_reason")
+        }
+
+        if message.get("tool_calls"):
+            result["tool_calls"] = []
+            for tc in message["tool_calls"]:
+                tool_call = {
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "arguments": json.loads(tc["function"]["arguments"])
+                }
+                result["tool_calls"].append(tool_call)
+
+        return result
+
+    except RateLimitExhaustedError:
+        raise  # Re-raise our custom error
+    except requests.exceptions.Timeout:
+        raise Exception("Request timed out. Please check your internet connection.")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"API request failed: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse tool arguments: {str(e)}")
+    except KeyError as e:
+        raise Exception(f"Unexpected API response format: {str(e)}")

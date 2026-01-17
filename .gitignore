@@ -19,3 +19,5 @@ __pycache__/
 .env
 venv/
 .venv/
+
+AGENTIC_PLAN.md
