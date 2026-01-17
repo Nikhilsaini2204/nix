@@ -33,9 +33,6 @@ def analyze_entities():
         if entity:
             entities.append(entity)
 
-    if not is_quiet():
-        print_tool_result(f"{len(entities)} entities found")
-
     # Build relationship summary
     relationships = []
     for entity in entities:
@@ -45,6 +42,25 @@ def analyze_entities():
                 "to": rel["target"],
                 "type": rel["type"]
             })
+
+    if not is_quiet():
+        print_tool_result(f"{len(entities)} entities with {len(relationships)} relationships")
+        # Show entities with details
+        for entity in entities[:5]:
+            name = entity.get('name', '')
+            table = entity.get('table', '')
+            field_count = entity.get('field_count', 0)
+            rel_count = entity.get('relationship_count', 0)
+            print_tool_result(f"  {name} → {table} ({field_count} fields, {rel_count} relations)")
+        if len(entities) > 5:
+            print_tool_result(f"  ... and {len(entities) - 5} more")
+        # Show relationships
+        if relationships:
+            print_tool_result(f"  Relationships:")
+            for rel in relationships[:4]:
+                print_tool_result(f"    {rel['from']} --{rel['type']}--> {rel['to']}")
+            if len(relationships) > 4:
+                print_tool_result(f"    ... and {len(relationships) - 4} more")
 
     return {
         "summary": f"Found {len(entities)} JPA entities with {len(relationships)} relationships",

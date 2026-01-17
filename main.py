@@ -36,6 +36,7 @@ def main():
         if not api_key:
             print("Error: API key not configured.")
             print("Run: nix config <your_groq_api_key>")
+            print("Get your key at: https://console.groq.com/keys")
             sys.exit(1)
 
         # Check if .nix folder exists

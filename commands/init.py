@@ -7,13 +7,31 @@ def run():
     """Run initialization command"""
     print("Initializing nix...")
 
+    # Check API key first
+    from llm.client import get_api_key
+    if not get_api_key():
+        print("Error: API key not configured.")
+        print("Run: nix config <your_groq_api_key>")
+        print("Get your key at: https://console.groq.com/keys")
+        return False
+
     # Check if Spring Boot project
     print("Checking if this is a Spring Boot project...")
-    is_springboot, version = detector.is_springboot_project()
+    try:
+        is_springboot, version = detector.is_springboot_project()
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return False
 
     if not is_springboot:
-        print("Error: This does not appear to be a Spring Boot project.")
-        print("Make sure you're in a directory with pom.xml or build.gradle.")
+        # Check if there's a build file at all
+        build_file, _ = detector.find_build_file()
+        if build_file:
+            print("Error: Could not detect Spring Boot in your build file.")
+            print("Make sure your pom.xml or build.gradle has Spring Boot dependencies.")
+        else:
+            print("Error: No pom.xml or build.gradle found.")
+            print("Make sure you're in a Spring Boot project directory.")
         return False
 
     print(f"Detected Spring Boot {version}")

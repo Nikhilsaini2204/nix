@@ -113,10 +113,6 @@ def show_capabilities_prompt():
 def get_tool_for_capability(capability):
     """Get the tool name(s) for a capability."""
     if capability["tool"] == "all":
-        return [
-            "analyze_dependencies",
-            "analyze_code_structure",
-            "analyze_endpoints",
-            "analyze_beans"
-        ]
+        # Use full_analysis for "everything" - it runs all analyzers in one call
+        return ["full_analysis"]
     return [capability["tool"]]

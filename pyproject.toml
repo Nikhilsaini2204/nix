@@ -17,4 +17,4 @@ nix = "main:main"
 
 [tool.setuptools]
 py-modules = ["main", "config"]
-packages = ["commands", "core", "llm", "utils", "storage"]
+packages = ["commands", "core", "llm", "utils", "storage", "tools"]

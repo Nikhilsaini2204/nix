@@ -4,7 +4,7 @@
     <strong>AI-powered CLI for Spring Boot projects</strong>
   </p>
   <p align="center">
-    Detect • Analyze • Manage
+    Analyze • Explore • Understand
   </p>
 </p>
 
@@ -16,14 +16,20 @@
 
 ---
 
-## ✨ Features
+## ✨ What Can Nix Do?
 
-| Feature | Description |
-|---------|-------------|
-| 🔍 **Smart Detection** | Automatically identifies Spring Boot projects (Maven & Gradle) |
-| 🤖 **AI-Powered** | Uses Groq LLM for intelligent build file analysis |
-| 📊 **Project Tracking** | Monitors structure changes and tracks metadata |
-| 🚀 **Simple CLI** | Just type `nix` - that's it |
+Talk to your Spring Boot project in natural language:
+
+```
+> analyze my dependencies
+> what endpoints do I have?
+> show me the project structure
+> analyze everything
+> find usages of UserService
+> what does TestController do?
+```
+
+Nix understands your project and gives you instant insights.
 
 ---
 
@@ -31,20 +37,11 @@
 
 ### 1. Install
 
-**Option A: Using pipx (Recommended)**
-```bash
-git clone https://github.com/Nikhilsaini2204/nix.git
-pipx install -e /path/to/nix
-```
-
-**Option B: Using pip**
 ```bash
 git clone https://github.com/Nikhilsaini2204/nix.git
 cd nix
-pip install .
+pip install -e .
 ```
-
-> **Note:** pipx installs the tool in an isolated environment and makes it globally available without activating a virtual environment.
 
 ### 2. Configure
 
@@ -54,38 +51,13 @@ Get your free API key from **[Groq Console](https://console.groq.com/keys)**
 nix config YOUR_API_KEY
 ```
 
-### 3. Initialize Your Project
+### 3. Use It
 
-Navigate to your Spring Boot project and run:
+Navigate to any Spring Boot project and start asking:
 
 ```bash
 cd your-springboot-project
 nix
-```
-
-On first run, `nix` will:
-- ✓ Detect if it's a Spring Boot project (checks for `pom.xml` or `build.gradle`)
-- ✓ Analyze your build file using AI
-- ✓ Create a `.nix/` folder to store project metadata
-- ✓ Scan and count your project files
-- ✓ Save project configuration
-
-### 4. Check Status Anytime
-
-```bash
-nix status
-```
-
----
-
-## 📖 Commands
-
-```
-nix                    Initialize or show project status
-nix config <key>       Configure your Groq API key
-nix status             Display project information
-nix analyze            Analyze your code (coming soon)
-nix refresh            Update project index (coming soon)
 ```
 
 ---
@@ -93,39 +65,65 @@ nix refresh            Update project index (coming soon)
 ## 🎬 Demo
 
 ```bash
-$ cd my-springboot-app
-$ nix
+$ nix analyze everything
 
-Initializing nix...
-Checking if this is a Spring Boot project...
-✓ Detected Spring Boot 3.2.0
-Scanning project structure...
-✓ Nix initialized successfully.
-Project contains 15 Java files.
+Using 1 tool...
 
-Next steps:
-  Run 'nix analyze' to analyze your code
-  Run 'nix status' to check project status
+⏺ Exploring project structure
+  ⎿  12 directories, 45 files
+⏺ Analyzing dependencies
+  ⎿  23 dependencies (8 Spring) via maven
+⏺ Analyzing code structure
+  ⎿  15 Java files, 6 packages
+  ⎿  3 controllers, 4 services, 2 repositories
+⏺ Finding REST endpoints
+  ⎿  12 endpoints in 3 controllers
+  ⎿  Methods: 6 GET, 4 POST, 2 DELETE
+⏺ Reading configuration
+  ⎿  18 properties in 2 file(s)
+⏺ Scanning Spring beans
+  ⎿  9 beans total
+⏺ Finding JPA entities
+  ⎿  3 entities, 5 relationships
+
+That's the full overview. Want me to dive deeper into anything specific?
 ```
 
 ---
 
-## 🛠 How It Works
+## 🛠 Available Analysis Tools
+
+| Command | What it does |
+|---------|--------------|
+| `analyze dependencies` | Shows all Maven/Gradle dependencies with versions |
+| `analyze endpoints` | Lists all REST API endpoints with HTTP methods |
+| `analyze beans` | Finds all Spring beans (services, repos, components) |
+| `analyze entities` | Shows JPA entities and their relationships |
+| `analyze configuration` | Reads application.properties/yml settings |
+| `explore project` | Shows complete directory structure |
+| `analyze everything` | Runs all analyzers in one go |
+| `find <symbol>` | Searches for usages of a class/method |
+| `describe <file>` | Explains what a Java file does |
+
+---
+
+## 📖 Commands
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                         nix                            │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│   1. 📁 Detect      Find pom.xml or build.gradle       │
-│                              ↓                          │
-│   2. 🤖 Analyze     Send to Groq LLM for analysis      │
-│                              ↓                          │
-│   3. 💾 Store       Save metadata in .nix/ folder     │
-│                              ↓                          │
-│   4. 👀 Monitor     Track changes over time            │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+nix                    Start interactive mode
+nix <question>         Ask a question directly
+nix config <key>       Configure your Groq API key
+nix status             Display project information
+nix help               Show help
+```
+
+**Interactive Commands:**
+```
+help      Show help
+status    Show project status
+new       Start fresh conversation
+clear     Clear the screen
+exit      Exit nix
 ```
 
 ---
@@ -134,21 +132,34 @@ Next steps:
 
 ```
 nix/
-├── 📄 main.py              # CLI entry point
-├── 📄 config.py            # Configuration management
-├── 📁 commands/
+├── main.py                 # CLI entry point
+├── config.py               # Configuration management
+├── commands/
 │   ├── init.py             # Project initialization
 │   └── status.py           # Status display
-├── 📁 core/
-│   └── detector.py         # Spring Boot detection
-├── 📁 llm/
-│   ├── client.py           # Groq API client
-│   └── prompts.py          # LLM prompts
-├── 📁 utils/
-│   ├── file.py             # File operations
-│   └── logger.py           # Logging utilities
-└── 📁 storage/
-    └── store.py            # JSON persistence
+├── core/
+│   ├── agent.py            # Agentic loop with conversation history
+│   ├── capabilities.py     # User guidance system
+│   ├── detector.py         # Spring Boot detection
+│   └── tools_registry.py   # Tool registration system
+├── llm/
+│   ├── client.py           # Groq API client with rate limiting
+│   ├── prompts.py          # Detection prompts
+│   └── system_prompts.py   # Agent system prompt
+├── tools/
+│   ├── bean_analyzer.py    # Spring bean analysis
+│   ├── code_analyzer.py    # Code structure analysis
+│   ├── code_describer.py   # Local Java file parsing
+│   ├── code_search.py      # Code search & find usages
+│   ├── config_analyzer.py  # Configuration analysis
+│   ├── dependency_analyzer.py  # Dependency analysis
+│   ├── endpoint_analyzer.py    # REST endpoint analysis
+│   ├── entity_analyzer.py  # JPA entity analysis
+│   ├── file_reader.py      # File reading
+│   ├── full_analyzer.py    # Combined full analysis
+│   └── project_explorer.py # Project structure explorer
+└── utils/
+    └── output.py           # CLI output formatting
 ```
 
 ---
@@ -164,10 +175,17 @@ nix/
 
 - [x] Spring Boot detection
 - [x] Project initialization
-- [x] Status tracking
-- [ ] Code analysis
-- [ ] Dependency scanning
-- [ ] Security checks
+- [x] Dependency analysis
+- [x] Code structure analysis
+- [x] REST endpoint analysis
+- [x] Spring bean analysis
+- [x] JPA entity analysis
+- [x] Configuration analysis
+- [x] Code search
+- [x] Full project analysis
+- [x] Conversational interface
+- [ ] Security vulnerability scanning
+- [ ] Code quality suggestions
 - [ ] IDE integrations
 
 ---
@@ -186,13 +204,21 @@ Contributions are welcome! Feel free to:
 
 ## 📄 License
 
-MIT License - feel free to use this project however you'd like.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-<p align="center">
-  <strong>Built with ❤️ by Nikhil</strong>
-</p>
+## 👨‍💻 About The Creator
+
+Built with ❤️ by **Nikhil** - a software developer exploring the world of AI.
+
+Feel free to connect:
+- 💼 [LinkedIn](https://www.linkedin.com/in/nikhil2204/)
+- 🐙 [GitHub](https://github.com/Nikhilsaini2204)
+- 📸 Instagram: [@ni.khll](https://instagram.com/ni.khll)
+- 📧 Email: nikhilsaini6742@gmail.com
+
+---
 
 <p align="center">
   <sub>If you found this helpful, consider giving it a ⭐</sub>
