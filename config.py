@@ -5,6 +5,7 @@ import json
 NIX_FOLDER = ".nix"
 CONFIG_FILE = "config.json"
 GITIGNORE_FILE = ".gitignore"
+INDEX_FOLDER = "index"
 
 
 def get_project_root():
@@ -20,6 +21,11 @@ def get_nix_path():
 def get_config_path():
     """Get full path to config.json"""
     return os.path.join(get_nix_path(), CONFIG_FILE)
+
+
+def get_index_path():
+    """Get full path to index folder"""
+    return os.path.join(get_nix_path(), INDEX_FOLDER)
 
 
 def nix_exists():

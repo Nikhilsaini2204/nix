@@ -12,6 +12,16 @@ from tools.entity_analyzer import register as register_entity_analyzer
 from tools.full_analyzer import register as register_full_analyzer
 from tools.code_describer import register as register_code_describer
 
+# Phase 3: Issue finding tools
+from tools.build_runner import register as register_build_runner
+from tools.test_runner import register as register_test_runner
+from tools.error_tracer import register as register_error_tracer
+from tools.call_chain_finder import register as register_call_chain_finder
+from tools.null_safety_checker import register as register_null_safety_checker
+from tools.bean_wiring_checker import register as register_bean_wiring_checker
+from tools.annotation_checker import register as register_annotation_checker
+from tools.issue_finder import register as register_issue_finder
+
 
 def register_all_tools():
     """Register all available tools with the registry."""
@@ -37,3 +47,13 @@ def register_all_tools():
 
     # Code describer (local parsing, no LLM tokens)
     register_code_describer()
+
+    # Phase 3: Issue finding tools
+    register_build_runner()
+    register_test_runner()
+    register_error_tracer()
+    register_call_chain_finder()
+    register_null_safety_checker()
+    register_bean_wiring_checker()
+    register_annotation_checker()
+    register_issue_finder()
