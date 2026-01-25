@@ -11,6 +11,20 @@ from utils.output import (
     print_code_snippet, bold, error, warn, success, muted, highlight
 )
 
+# Import lazily to avoid circular imports
+_get_quick_suggestion = None
+
+def get_quick_suggestion_safe(error_message: str):
+    """Get quick suggestion, importing lazily."""
+    global _get_quick_suggestion
+    if _get_quick_suggestion is None:
+        try:
+            from tools.fix_suggester import get_quick_suggestion
+            _get_quick_suggestion = get_quick_suggestion
+        except ImportError:
+            return None
+    return _get_quick_suggestion(error_message)
+
 
 def build_project(clean: bool = False) -> Dict[str, Any]:
     """
@@ -49,7 +63,7 @@ def build_project(clean: bool = False) -> Dict[str, Any]:
                 errors = result.get('errors', [])
                 print_tool_result(error(f"Build failed with {len(errors)} errors"))
 
-                # Print colored error snippets
+                # Print colored error snippets with inline suggestions
                 for i, err in enumerate(errors[:5], 1):
                     file_path = err.get('file')
                     line = err.get('line')
@@ -62,6 +76,11 @@ def build_project(clean: bool = False) -> Dict[str, Any]:
                         else:
                             file_name = os.path.basename(file_path) if file_path else 'unknown'
                             print(f"  {muted('at')} {highlight(file_name)}:{warn(str(line))}")
+
+                    # Show inline quick fix suggestion
+                    quick_fix = get_quick_suggestion_safe(message)
+                    if quick_fix:
+                        print(f"  {success('Quick Fix:')} {quick_fix}")
 
                 if len(errors) > 5:
                     print(f"\n{muted(f'... and {len(errors) - 5} more errors')}")
@@ -215,22 +234,45 @@ def parse_maven_errors(output: str) -> List[Dict[str, Any]]:
         output: Maven output text
 
     Returns:
-        List of error dictionaries with file, line, message
+        List of error dictionaries with file, line, message, snippet, and suggestion
     """
     errors = []
+    seen_errors = set()  # Track unique errors by file:line:message
 
     # Maven compiler error format:
-    # [ERROR] /path/to/File.java:[line,col] error: message
-    pattern = r'\[ERROR\]\s+([^:]+\.java):\[(\d+),(\d+)\]\s+error:\s+(.+)'
+    # [ERROR] /path/to/File.java:[line,col] message
+    # or [ERROR] /path/to/File.java:[line,col] error: message
+    pattern = r'\[ERROR\]\s+([^:]+\.java):\[(\d+),(\d+)\]\s+(?:error:\s*)?(.+)'
 
     for match in re.finditer(pattern, output):
-        errors.append({
-            "file": match.group(1),
-            "line": int(match.group(2)),
+        file_path = match.group(1)
+        line = int(match.group(2))
+        message = match.group(4).strip()
+
+        # Skip duplicates
+        error_key = f"{file_path}:{line}:{message}"
+        if error_key in seen_errors:
+            continue
+        seen_errors.add(error_key)
+
+        error_entry = {
+            "file": file_path,
+            "line": line,
             "column": int(match.group(3)),
-            "message": match.group(4).strip(),
-            "type": "error"
-        })
+            "message": message,
+            "issue": message,  # For compatibility with issue display
+            "type": "error",
+            "severity": "critical"
+        }
+        # Add code snippet
+        snippet = get_code_snippet(file_path, line, context=2)
+        if snippet:
+            error_entry["snippet"] = snippet
+        # Add quick suggestion
+        suggestion = get_quick_suggestion_safe(message)
+        if suggestion:
+            error_entry["suggestion"] = suggestion
+        errors.append(error_entry)
 
     # Also catch simpler error format:
     # [ERROR] /path/to/File.java:[line] error: message
@@ -239,29 +281,36 @@ def parse_maven_errors(output: str) -> List[Dict[str, Any]]:
     for match in re.finditer(pattern2, output):
         file_path = match.group(1)
         line = int(match.group(2))
-        # Avoid duplicates
-        if not any(e['file'] == file_path and e['line'] == line for e in errors):
-            errors.append({
-                "file": file_path,
-                "line": line,
-                "column": 0,
-                "message": match.group(3).strip(),
-                "type": "error"
-            })
+        message = match.group(3).strip()
 
-    # Catch general error messages
-    if not errors:
-        general_pattern = r'\[ERROR\]\s+(.+)'
-        for match in re.finditer(general_pattern, output):
-            msg = match.group(1).strip()
-            # Skip certain meta messages
-            if not any(skip in msg for skip in ['COMPILATION ERROR', 'Help 1', '->']):
-                errors.append({
-                    "file": None,
-                    "line": None,
-                    "message": msg,
-                    "type": "error"
-                })
+        # Skip duplicates
+        error_key = f"{file_path}:{line}:{message}"
+        if error_key in seen_errors:
+            continue
+        seen_errors.add(error_key)
+
+        error_entry = {
+            "file": file_path,
+            "line": line,
+            "column": 0,
+            "message": message,
+            "issue": message,
+            "type": "error",
+            "severity": "critical"
+        }
+        # Add code snippet
+        snippet = get_code_snippet(file_path, line, context=2)
+        if snippet:
+            error_entry["snippet"] = snippet
+        # Add quick suggestion
+        suggestion = get_quick_suggestion_safe(message)
+        if suggestion:
+            error_entry["suggestion"] = suggestion
+        errors.append(error_entry)
+
+    # Only add general error messages if no specific errors found
+    # Skip meta messages like "re-run Maven with -e switch"
+    # These are not actual errors, just Maven suggestions
 
     return errors
 
@@ -273,7 +322,7 @@ def parse_gradle_errors(output: str) -> List[Dict[str, Any]]:
         output: Gradle output text
 
     Returns:
-        List of error dictionaries with file, line, message
+        List of error dictionaries with file, line, message, and suggestion
     """
     errors = []
 
@@ -282,13 +331,19 @@ def parse_gradle_errors(output: str) -> List[Dict[str, Any]]:
     pattern = r'([^:\s]+\.java):(\d+):\s+error:\s+(.+)'
 
     for match in re.finditer(pattern, output):
-        errors.append({
+        message = match.group(3).strip()
+        error_entry = {
             "file": match.group(1),
             "line": int(match.group(2)),
             "column": 0,
-            "message": match.group(3).strip(),
+            "message": message,
             "type": "error"
-        })
+        }
+        # Add quick suggestion
+        suggestion = get_quick_suggestion_safe(message)
+        if suggestion:
+            error_entry["suggestion"] = suggestion
+        errors.append(error_entry)
 
     # Gradle task failure format
     pattern2 = r'> Task :(\w+) FAILED'

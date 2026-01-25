@@ -3,9 +3,13 @@ from config import create_nix_folder, save_config, get_default_config
 from core import detector
 
 
-def run():
-    """Run initialization command"""
-    print("Initializing nix...")
+def run(verbose=False):
+    """Run initialization command silently.
+
+    Args:
+        verbose: If True, show detailed output (default: False)
+    """
+    from utils.output import set_quiet_mode, muted
 
     # Check API key first
     from llm.client import get_api_key
@@ -16,7 +20,6 @@ def run():
         return False
 
     # Check if Spring Boot project
-    print("Checking if this is a Spring Boot project...")
     try:
         is_springboot, version = detector.is_springboot_project()
     except Exception as e:
@@ -24,7 +27,6 @@ def run():
         return False
 
     if not is_springboot:
-        # Check if there's a build file at all
         build_file, _ = detector.find_build_file()
         if build_file:
             print("Error: Could not detect Spring Boot in your build file.")
@@ -34,10 +36,7 @@ def run():
             print("Make sure you're in a Spring Boot project directory.")
         return False
 
-    print(f"Detected Spring Boot {version}")
-
     # Count Java files
-    print("Scanning project structure...")
     java_file_count = detector.count_java_files()
 
     # Create .nix folder
@@ -61,11 +60,71 @@ def run():
         print(f"Error: {str(e)}")
         return False
 
-    # Success message
-    print("Nix initialized successfully.")
-    print(f"Project contains {java_file_count} Java files.")
-    print("\nNext steps:")
-    print("  Run 'nix analyze' to analyze your code")
-    print("  Run 'nix status' to check project status")
+    # Build code index silently
+    from indexer.index_builder import IndexBuilder
+    from indexer.index_storage import IndexStorage
+
+    # Suppress all output during indexing
+    set_quiet_mode(True)
+
+    storage = IndexStorage()
+    is_first_init = storage.load_index_data() is None
+
+    try:
+        builder = IndexBuilder()
+        builder.build_index(force=is_first_init)
+    except Exception:
+        pass  # Continue even if index fails
+
+    # Build codebase context silently
+    try:
+        from indexer.context_builder import ContextBuilder
+        from tools.endpoint_analyzer import analyze_endpoints
+        from tools.entity_analyzer import analyze_entities
+        from tools.config_analyzer import analyze_configuration
+        from tools.dependency_analyzer import analyze_dependencies
+
+        index = builder.get_index()
+
+        endpoints_data = []
+        entities_data = []
+        cfg_data = None
+        deps_data = None
+
+        try:
+            ep_result = analyze_endpoints()
+            if not ep_result.get("error"):
+                endpoints_data = ep_result.get("endpoints", [])
+
+            ent_result = analyze_entities()
+            if not ent_result.get("error"):
+                entities_data = ent_result.get("entities", [])
+
+            cfg_data = analyze_configuration()
+            deps_data = analyze_dependencies()
+        except Exception:
+            pass
+
+        context_builder = ContextBuilder()
+        context_builder.build_full_context(
+            classes=index.get("classes", []) if index else [],
+            methods=index.get("methods", []) if index else [],
+            endpoints=endpoints_data,
+            entities=entities_data,
+            config=cfg_data,
+            dependencies=deps_data,
+            method_summaries=[],
+            show_progress=False  # Silent
+        )
+    except Exception:
+        pass
+
+    set_quiet_mode(False)
+
+    # Show minimal success info
+    if verbose:
+        print(f"Spring Boot {version} • {java_file_count} Java files")
+    else:
+        print(muted(f"Spring Boot {version} • {java_file_count} files indexed"))
 
     return True

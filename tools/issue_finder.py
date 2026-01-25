@@ -45,16 +45,34 @@ def find_issues(include_build: bool = True, include_tests: bool = False,
     if include_build:
         try:
             from tools.build_runner import build_project
+            from utils.output import set_quiet_mode
+
+            # Run build in quiet mode to avoid duplicate output
+            set_quiet_mode(True)
             build_result = build_project()
+            set_quiet_mode(False)
+
             if not build_result.get('success') and build_result.get('errors'):
                 for err in build_result['errors']:
                     err['category'] = 'compile_error'
-                    err['severity'] = 'critical'
+                    if not err.get('severity'):
+                        err['severity'] = 'critical'
                 build_errors = build_result['errors']
                 all_issues.extend(build_errors)
                 category_counts['compile_errors'] = len(build_errors)
+
+                # Print build status
+                if not is_quiet():
+                    print_tool_result(error(f"Build failed with {len(build_errors)} compile errors"))
+            elif build_result.get('success'):
+                if not is_quiet():
+                    print_tool_result(success("Build successful - no compile errors"))
         except Exception as e:
             errors.append(f"Build check failed: {str(e)}")
+
+    # Run other checks in quiet mode to consolidate output
+    from utils.output import set_quiet_mode
+    set_quiet_mode(True)
 
     # Run null safety check
     try:
@@ -91,6 +109,8 @@ def find_issues(include_build: bool = True, include_tests: bool = False,
             category_counts['annotations'] = len(annotation_result['issues'])
     except Exception as e:
         errors.append(f"Annotation check failed: {str(e)}")
+
+    set_quiet_mode(False)
 
     # Optional: Run tests
     test_failures = []

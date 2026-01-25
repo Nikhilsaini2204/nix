@@ -21,6 +21,10 @@ from tools.null_safety_checker import register as register_null_safety_checker
 from tools.bean_wiring_checker import register as register_bean_wiring_checker
 from tools.annotation_checker import register as register_annotation_checker
 from tools.issue_finder import register as register_issue_finder
+from tools.fix_suggester import register as register_fix_suggester
+from tools.semantic_search import register as register_semantic_search
+from tools.error_diagnostics import register as register_error_diagnostics
+from tools.smart_query import register as register_smart_query
 
 
 def register_all_tools():
@@ -57,3 +61,13 @@ def register_all_tools():
     register_bean_wiring_checker()
     register_annotation_checker()
     register_issue_finder()
+    register_fix_suggester()
+
+    # Phase 4: Semantic search (RAG)
+    register_semantic_search()
+
+    # Phase 5: Comprehensive error diagnostics
+    register_error_diagnostics()
+
+    # Phase 6: Smart query (uses cached context - no LLM)
+    register_smart_query()

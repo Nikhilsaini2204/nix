@@ -4,6 +4,7 @@ import json
 from llm.client import call_groq_with_tools, RateLimitExhaustedError
 from llm.system_prompts import get_system_prompt
 from core.tools_registry import get_tool_definitions, execute_tool, validate_tool_call
+from core.tool_selector import select_tools_for_query, get_minimal_tool_definitions
 
 
 MAX_ITERATIONS = 10
@@ -60,7 +61,8 @@ class Agent:
         self.conversation_history = [
             {"role": "system", "content": get_system_prompt()}
         ]
-        self.tools = get_tool_definitions()
+        self.all_tools = get_tool_definitions()
+        self.tools = self.all_tools  # Will be filtered per query
 
     def _trim_history(self):
         """Trim conversation history to avoid context overflow."""
@@ -89,6 +91,10 @@ class Agent:
             "content": user_input
         })
 
+        # Select relevant tools for this query (saves tokens!)
+        selected_tools = select_tools_for_query(user_input, self.all_tools)
+        self.tools = get_minimal_tool_definitions(selected_tools)
+
         # Track tool calls for loop detection within this turn
         turn_tool_calls = []
         last_tool_results = None  # Store for rate limit fallback
@@ -100,13 +106,37 @@ class Agent:
 
                 # Check if LLM wants to call tools
                 if response.get("tool_calls"):
+                    # Pre-check for loops BEFORE executing tools
+                    new_calls = []
+                    for tc in response["tool_calls"]:
+                        call_sig = (tc["name"], json.dumps(tc["arguments"], sort_keys=True))
+                        if call_sig not in turn_tool_calls:
+                            new_calls.append(tc)
+                        else:
+                            # Already called this tool with same args
+                            pass
+
+                    if not new_calls:
+                        # All tools were already called - use previous results
+                        if last_tool_results:
+                            for tr in last_tool_results.get("results", []):
+                                result = tr.get("result", {})
+                                if isinstance(result, dict) and result.get("summary"):
+                                    return result.get("summary")
+                        return "I've already analyzed this. What specific aspect would you like to know more about?"
+
                     tool_results = self._process_tool_calls(
-                        response["tool_calls"],
+                        new_calls,  # Only process new calls
                         turn_tool_calls
                     )
                     last_tool_results = tool_results  # Save for fallback
 
                     if tool_results.get("loop_detected"):
+                        # If we have results with _skip_llm, use those
+                        for tr in tool_results.get("results", []):
+                            result = tr.get("result", {})
+                            if isinstance(result, dict) and result.get("_skip_llm"):
+                                return result.get("_message", result.get("summary", "Analysis complete."))
                         assistant_msg = "I seem to be repeating myself. Let me summarize what I found."
                         self.conversation_history.append({
                             "role": "assistant",
@@ -118,7 +148,7 @@ class Agent:
                     self.conversation_history.append({
                         "role": "assistant",
                         "content": response.get("content") or "",
-                        "tool_calls": self._format_tool_calls(response["tool_calls"])
+                        "tool_calls": self._format_tool_calls(new_calls)
                     })
 
                     # Add tool results to history
@@ -132,7 +162,7 @@ class Agent:
                     # Track for loop detection
                     turn_tool_calls.extend(
                         (tc["name"], json.dumps(tc["arguments"], sort_keys=True))
-                        for tc in response["tool_calls"]
+                        for tc in new_calls
                     )
 
                     # Check if any tool wants to skip LLM response (self-sufficient tools)
@@ -157,7 +187,13 @@ class Agent:
                     })
                     return content
                 else:
-                    msg = "I couldn't generate a response. Please try rephrasing."
+                    # LLM returned empty response - provide helpful guidance
+                    finish_reason = response.get("finish_reason", "")
+                    if finish_reason == "tool_calls":
+                        # Tool call was expected but not provided
+                        msg = "I'm not sure how to help with that. Can you provide more details about what you'd like me to analyze?"
+                    else:
+                        msg = "I couldn't generate a response. Try asking about:\n- Dependencies analysis\n- Code structure\n- Endpoints and APIs\n- Configuration\n- Finding issues"
                     self.conversation_history.append({
                         "role": "assistant",
                         "content": msg
@@ -170,18 +206,50 @@ class Agent:
                     for tr in last_tool_results.get("results", []):
                         result = tr.get("result", {})
                         if isinstance(result, dict):
-                            summary = result.get("summary", "Analysis complete. See output above.")
+                            # Try to get a meaningful summary from the result
+                            summary = result.get("summary")
+                            if not summary:
+                                # Build a summary from available data
+                                if "endpoints" in result:
+                                    summary = f"Found {len(result['endpoints'])} endpoints in your project."
+                                elif "dependencies" in result:
+                                    summary = f"Found {len(result['dependencies'])} dependencies."
+                                elif "classes" in result:
+                                    summary = f"Found {len(result['classes'])} classes."
+                                elif "results" in result:
+                                    summary = f"Found {len(result['results'])} matches."
+                                elif "tree" in result:
+                                    summary = "Project structure loaded. Check the tree above for details."
+                                else:
+                                    summary = "Analysis data retrieved. Ask me specific questions about it."
                             self.conversation_history.append({
                                 "role": "assistant",
                                 "content": summary
                             })
                             return summary
-                    return "Analysis complete. See the output above for details."
+                    return "I've gathered some data. What would you like to know about your project?"
                 # No tool results - show rate limit message
                 from utils.output import warn
                 return warn(str(e))
+            except json.JSONDecodeError as e:
+                # Handle malformed JSON from LLM
+                error_msg = "I had trouble processing that request. Please try rephrasing your question."
+                self.conversation_history.append({
+                    "role": "assistant",
+                    "content": error_msg
+                })
+                return error_msg
             except Exception as e:
-                error_msg = f"An error occurred: {str(e)}"
+                error_str = str(e)
+                # Provide more helpful error messages for common issues
+                if "API error" in error_str:
+                    error_msg = f"There was an issue with the AI service: {error_str}"
+                elif "timeout" in error_str.lower():
+                    error_msg = "The request timed out. Please try again."
+                elif "connection" in error_str.lower():
+                    error_msg = "Network connection issue. Please check your internet connection."
+                else:
+                    error_msg = f"An error occurred: {error_str}"
                 return error_msg
 
         # Max iterations reached

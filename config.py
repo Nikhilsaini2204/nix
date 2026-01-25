@@ -84,3 +84,27 @@ def get_default_config():
         "total_files": 0,
         "last_checked": ""
     }
+
+
+def cleanup_nix_folder(silent: bool = True):
+    """Delete .nix folder to ensure fresh analysis on next run.
+
+    This is called on exit so that nix always gets the latest
+    changes when reinitialized.
+
+    Args:
+        silent: If True (default), don't print cleanup message
+
+    Returns:
+        True if cleanup was successful or folder didn't exist
+    """
+    import shutil
+
+    try:
+        nix_path = get_nix_path()
+        if os.path.exists(nix_path):
+            shutil.rmtree(nix_path)
+        return True
+    except Exception:
+        # Silently fail - cleanup is not critical
+        return False

@@ -6,6 +6,17 @@ import sys
 _quiet_mode = False
 
 
+# ASCII Art Banner for nix
+NIX_BANNER = """
+███╗   ██╗██╗██╗  ██╗
+████╗  ██║██║╚██╗██╔╝
+██╔██╗ ██║██║ ╚███╔╝
+██║╚██╗██║██║ ██╔██╗
+██║ ╚████║██║██╔╝ ██╗
+╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+"""
+
+
 def set_quiet_mode(enabled):
     """Enable/disable quiet mode to suppress step/success prints."""
     global _quiet_mode
@@ -90,6 +101,14 @@ def highlight(text):
 def muted(text):
     """Gray muted text."""
     return color(text, Colors.GRAY)
+
+
+def print_banner():
+    """Print the nix ASCII art banner in blue."""
+    if _use_color:
+        print(f"{Colors.BLUE}{Colors.BOLD}{NIX_BANNER}{Colors.RESET}")
+    else:
+        print(NIX_BANNER)
 
 
 # Status indicators

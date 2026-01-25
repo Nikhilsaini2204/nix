@@ -31,8 +31,10 @@ def analyze_dependencies():
     try:
         if build_type == "maven":
             dependencies = parse_maven_dependencies(build_file)
+            metadata = parse_maven_metadata(build_file)
         else:
             dependencies = parse_gradle_dependencies(build_file)
+            metadata = parse_gradle_metadata(build_file)
 
         # Categorize dependencies
         spring_deps = [d for d in dependencies if "spring" in d.get("group", "").lower()]
@@ -54,6 +56,8 @@ def analyze_dependencies():
             "build_file": os.path.basename(build_file),
             "total_count": len(dependencies),
             "dependencies": dependencies,
+            "java_version": metadata.get("java_version"),
+            "spring_boot_version": metadata.get("spring_boot_version"),
             "categories": {
                 "spring": len(spring_deps),
                 "test": len(test_deps),
@@ -103,6 +107,70 @@ def find_build_file():
                     return path, build_type
 
     return None, None
+
+
+def parse_maven_metadata(pom_path):
+    """
+    Parse Java version and Spring Boot version from pom.xml.
+
+    Returns:
+        Dict with java_version, spring_boot_version
+    """
+    metadata = {
+        "java_version": None,
+        "spring_boot_version": None
+    }
+
+    try:
+        tree = ET.parse(pom_path)
+        root = tree.getroot()
+
+        # Handle Maven namespace
+        ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+
+        # Find Java version in properties
+        # Look for: java.version, maven.compiler.source, maven.compiler.target
+        properties = root.find("m:properties", ns)
+        if properties is None:
+            properties = root.find("properties")
+
+        if properties is not None:
+            # Check java.version
+            java_ver = properties.find("m:java.version", ns)
+            if java_ver is None:
+                java_ver = properties.find("java.version")
+            if java_ver is not None and java_ver.text:
+                metadata["java_version"] = java_ver.text
+
+            # Check maven.compiler.source as fallback
+            if not metadata["java_version"]:
+                compiler_source = properties.find("m:maven.compiler.source", ns)
+                if compiler_source is None:
+                    compiler_source = properties.find("maven.compiler.source")
+                if compiler_source is not None and compiler_source.text:
+                    metadata["java_version"] = compiler_source.text
+
+        # Find Spring Boot version from parent
+        parent = root.find("m:parent", ns)
+        if parent is None:
+            parent = root.find("parent")
+
+        if parent is not None:
+            parent_artifact = parent.find("m:artifactId", ns)
+            if parent_artifact is None:
+                parent_artifact = parent.find("artifactId")
+
+            if parent_artifact is not None and "spring-boot" in (parent_artifact.text or "").lower():
+                parent_version = parent.find("m:version", ns)
+                if parent_version is None:
+                    parent_version = parent.find("version")
+                if parent_version is not None:
+                    metadata["spring_boot_version"] = parent_version.text
+
+    except Exception:
+        pass
+
+    return metadata
 
 
 def parse_maven_dependencies(pom_path):
@@ -165,6 +233,56 @@ def parse_maven_dependencies(pom_path):
         raise Exception(f"Invalid XML in pom.xml: {str(e)}")
 
     return dependencies
+
+
+def parse_gradle_metadata(gradle_path):
+    """
+    Parse Java version and Spring Boot version from build.gradle.
+
+    Returns:
+        Dict with java_version, spring_boot_version
+    """
+    metadata = {
+        "java_version": None,
+        "spring_boot_version": None
+    }
+
+    try:
+        with open(gradle_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Look for Java version patterns
+        # sourceCompatibility = '17' or sourceCompatibility = JavaVersion.VERSION_17
+        java_patterns = [
+            r"sourceCompatibility\s*=\s*['\"]?(\d+)['\"]?",
+            r"sourceCompatibility\s*=\s*JavaVersion\.VERSION_(\d+)",
+            r"jvmTarget\s*=\s*['\"](\d+)['\"]",
+            r"languageVersion\.set\s*\(\s*JavaLanguageVersion\.of\s*\(\s*(\d+)\s*\)\s*\)",
+        ]
+
+        for pattern in java_patterns:
+            match = re.search(pattern, content)
+            if match:
+                metadata["java_version"] = match.group(1)
+                break
+
+        # Look for Spring Boot version
+        # plugins { id 'org.springframework.boot' version '3.2.0' }
+        spring_boot_patterns = [
+            r"id\s*['\"]org\.springframework\.boot['\"]\s*version\s*['\"]([^'\"]+)['\"]",
+            r"org\.springframework\.boot:spring-boot[^:]*:([^'\"]+)['\"]",
+        ]
+
+        for pattern in spring_boot_patterns:
+            match = re.search(pattern, content)
+            if match:
+                metadata["spring_boot_version"] = match.group(1)
+                break
+
+    except Exception:
+        pass
+
+    return metadata
 
 
 def parse_gradle_dependencies(gradle_path):

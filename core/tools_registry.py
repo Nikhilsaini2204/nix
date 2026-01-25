@@ -43,9 +43,10 @@ def execute_tool(name, arguments):
         Tool result as dict with summary and data
     """
     if name not in _TOOL_HANDLERS:
+        # Don't expose internal tool names in error message
         return {
-            "error": f"Unknown tool: {name}",
-            "available_tools": list(_TOOL_HANDLERS.keys())
+            "error": f"Unknown tool: {name}. Please try a different approach.",
+            "suggestion": "Use available analysis tools for this project"
         }
 
     handler = _TOOL_HANDLERS[name]["handler"]
@@ -75,7 +76,8 @@ def validate_tool_call(name, arguments):
         (is_valid, error_message)
     """
     if name not in _TOOL_HANDLERS:
-        return False, f"Unknown tool: {name}. Available: {list(_TOOL_HANDLERS.keys())}"
+        # Don't expose internal tool names in error message
+        return False, f"Unknown tool: {name}. Please use a valid analysis tool."
 
     return True, None
 

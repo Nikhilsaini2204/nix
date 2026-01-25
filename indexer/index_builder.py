@@ -7,6 +7,16 @@ from config import get_project_root
 from indexer.java_parser import JavaParser
 from indexer.index_storage import IndexStorage
 from indexer.call_graph import CallGraph
+from utils.output import is_quiet
+
+
+def _is_chromadb_available() -> bool:
+    """Check if ChromaDB is installed."""
+    try:
+        import chromadb
+        return True
+    except ImportError:
+        return False
 
 
 class IndexBuilder:
@@ -41,8 +51,10 @@ class IndexBuilder:
                 'stats': {'files': 0, 'classes': 0, 'methods': 0}
             }
 
-        # Check if rebuild is needed
-        if not force and not self.storage.is_index_stale(java_files):
+        # Check if rebuild is needed and get changed files for incremental update
+        changed_files = self.storage.get_changed_files(java_files)
+
+        if not force and not changed_files:
             return {
                 'success': True,
                 'message': 'Index is up-to-date',
@@ -81,7 +93,16 @@ class IndexBuilder:
             file_hashes=file_hashes
         )
 
-        return {
+        # Build vector index for semantic search (if ChromaDB available)
+        vector_stats = None
+        if _is_chromadb_available() and all_methods:
+            vector_stats = self._build_vector_index(
+                all_methods,
+                changed_files=changed_files,
+                force=force
+            )
+
+        result = {
             'success': success,
             'message': 'Index built successfully' if success else 'Failed to save index',
             'rebuilt': True,
@@ -93,6 +114,12 @@ class IndexBuilder:
             },
             'errors': errors if errors else None
         }
+
+        if vector_stats:
+            result['stats']['vectors'] = vector_stats.get('indexed', 0)
+            result['vector_index'] = vector_stats
+
+        return result
 
     def get_index(self) -> Optional[Dict[str, Any]]:
         """Get the current index, building if necessary.
@@ -272,6 +299,143 @@ class IndexBuilder:
             return {'callers': {}, 'callees': {}, 'edges': []}
 
         return index.get('call_graph', {'callers': {}, 'callees': {}, 'edges': []})
+
+    def _build_vector_index(self, methods: List[Dict[str, Any]],
+                             changed_files: List[str] = None,
+                             force: bool = False) -> Dict[str, Any]:
+        """Build vector index for semantic search.
+
+        Args:
+            methods: List of parsed method dictionaries
+            changed_files: List of files that changed (for incremental update)
+            force: If True, rebuild entire index
+
+        Returns:
+            Dictionary with vector index build stats
+        """
+        try:
+            from indexer.code_summarizer import summarize_methods
+            from indexer.vector_store import VectorStore
+
+            store = VectorStore()
+
+            # Determine if we need full rebuild or incremental update
+            if force or not store.has_index():
+                if not is_quiet():
+                    print("  Building semantic search index...")
+                methods_to_index = methods
+                # Clear for full rebuild
+                store.clear()
+            elif changed_files:
+                if not is_quiet():
+                    print(f"  Updating semantic index ({len(changed_files)} files changed)...")
+                # Remove old vectors for changed files
+                for file_path in changed_files:
+                    store.remove_by_file(file_path)
+                # Only index methods from changed files
+                changed_set = set(changed_files)
+                methods_to_index = [m for m in methods if m.get('file_path') in changed_set]
+            else:
+                # No changes
+                return {'indexed': 0, 'skipped': 0, 'error': None, 'incremental': True}
+
+            # Filter to important methods (skip simple getters/setters)
+            important_methods = [
+                m for m in methods_to_index
+                if not self._is_trivial_method(m)
+            ]
+
+            skipped_count = len(methods_to_index) - len(important_methods)
+
+            if not important_methods:
+                return {'indexed': 0, 'skipped': len(methods_to_index), 'error': None}
+
+            # Generate summaries using LLM
+            summarized = summarize_methods(important_methods, show_progress=not is_quiet())
+
+            # Prepare for vector store
+            vector_data = []
+            for method in summarized:
+                # Create unique ID including file and line to avoid duplicates
+                file_path = method.get('file_path', '')
+                file_name = file_path.split('/')[-1].replace('.java', '') if file_path else 'unknown'
+                line = method.get('start_line', 0)
+                method_name = method.get('name', 'unknown')
+                unique_id = f"{file_name}:{line}:{method_name}"
+
+                vector_data.append({
+                    'id': unique_id,
+                    'summary': method.get('summary', ''),
+                    'code': method.get('code', ''),
+                    'file_path': file_path,
+                    'line': line,
+                    'class_name': method.get('class_name', ''),
+                    'method_name': method_name,
+                    'annotations': method.get('annotations', [])
+                })
+
+            # Store in vector database
+            success = store.add_methods(vector_data)
+
+            if success:
+                total_count = store.get_count()
+                if not is_quiet():
+                    print(f"  Indexed {len(vector_data)} methods for semantic search (total: {total_count})")
+                return {
+                    'indexed': len(vector_data),
+                    'skipped': len(methods_to_index) - len(important_methods),
+                    'total': total_count,
+                    'error': None
+                }
+            else:
+                return {
+                    'indexed': 0,
+                    'skipped': len(methods),
+                    'error': 'Failed to store vectors'
+                }
+
+        except Exception as e:
+            import traceback
+            if not is_quiet():
+                print(f"  Warning: Semantic indexing failed: {str(e)}")
+            traceback.print_exc()
+            return {
+                'indexed': 0,
+                'skipped': len(methods),
+                'error': str(e)
+            }
+
+    def _is_trivial_method(self, method: Dict[str, Any]) -> bool:
+        """Check if a method is trivial (getter/setter/toString/etc).
+
+        Args:
+            method: Method dictionary
+
+        Returns:
+            True if method is trivial and should be skipped
+        """
+        name = method.get('name', '').lower()
+
+        # Skip common trivial methods by exact name
+        trivial_names = ['tostring', 'hashcode', 'equals', 'compareto', 'clone']
+        if name in trivial_names:
+            return True
+
+        # Check getters/setters (but keep complex ones with multiple lines)
+        start_line = method.get('start_line', 0)
+        end_line = method.get('end_line', 0)
+        method_length = end_line - start_line
+
+        # Only filter very simple getters/setters (1-2 lines, just return/assign)
+        trivial_prefixes = ['get', 'set']
+        for prefix in trivial_prefixes:
+            if name.startswith(prefix) and method_length <= 2:
+                return True
+
+        # Never filter constructors - they often contain important initialization logic
+        # Never filter methods with annotations like @PostMapping, @Transactional, etc.
+
+        return False
 
     def _find_java_files(self) -> List[str]:
         """Find all Java files in the project.

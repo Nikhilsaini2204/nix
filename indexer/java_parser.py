@@ -109,7 +109,12 @@ class JavaParser:
                            file_path: str, package: Optional[str]) -> Dict[str, Any]:
         """Extract information about a class/interface/enum."""
         class_type = class_node.type
-        name_node = self._find_node(class_node, 'identifier')
+
+        # Find class name - look for direct child identifier first (not in annotations)
+        name_node = self._find_first_child_by_types(class_node, ['identifier'])
+        if not name_node:
+            # Fallback to recursive search
+            name_node = self._find_node(class_node, 'identifier')
         class_name = self._get_node_text(name_node, content) if name_node else 'Unknown'
 
         start_line = class_node.start_point[0] + 1
@@ -117,17 +122,18 @@ class JavaParser:
 
         # Extract annotations
         annotations = []
-        modifiers = self._find_node(class_node.parent, 'modifiers') if class_node.parent else None
+        # Modifiers (including annotations) are direct children of class_declaration
+        modifiers = self._find_node(class_node, 'modifiers')
         if modifiers:
             for ann in self._find_all_nodes(modifiers, 'annotation'):
                 ann_name = self._get_annotation_name(ann, content)
                 if ann_name:
                     annotations.append(ann_name)
 
-        # Also check directly before class node for annotations
-        for ann in self._find_all_nodes(class_node, 'annotation'):
+        # Also check for marker_annotation directly in class node
+        for ann in self._find_all_nodes(class_node, ['annotation', 'marker_annotation']):
             ann_name = self._get_annotation_name(ann, content)
-            if ann_name:
+            if ann_name and ann_name not in annotations:
                 annotations.append(ann_name)
 
         # Build full qualified name
@@ -179,10 +185,13 @@ class JavaParser:
         """Extract information about a method."""
         is_constructor = method_node.type == 'constructor_declaration'
 
-        if is_constructor:
-            name_node = self._find_node(method_node, 'identifier')
-        else:
-            name_node = self._find_node(method_node, 'identifier')
+        # Find method name - must be a direct child identifier, not in annotations/modifiers
+        # The method name identifier comes after modifiers and return type
+        name_node = None
+        for child in method_node.children:
+            if child.type == 'identifier':
+                name_node = child
+                break
 
         method_name = self._get_node_text(name_node, content) if name_node else 'unknown'
 
@@ -411,9 +420,9 @@ class JavaParser:
         for match in re.finditer(r'import\s+([\w.*]+)\s*;', content):
             result['imports'].append(match.group(1))
 
-        # Extract classes (basic regex)
-        class_pattern = r'(?:@\w+(?:\([^)]*\))?\s*)*(?:public|private|protected)?\s*(?:abstract|final)?\s*(?:class|interface|enum)\s+(\w+)'
-        for match in re.finditer(class_pattern, content):
+        # Extract classes - find class/interface/enum declarations
+        class_keyword_pattern = r'(?:public|private|protected)?\s*(?:abstract|final)?\s*(?:class|interface|enum)\s+(\w+)'
+        for match in re.finditer(class_keyword_pattern, content):
             class_name = match.group(1)
             start_pos = match.start()
             line_num = content[:start_pos].count('\n') + 1
@@ -434,11 +443,20 @@ class JavaParser:
                 'implements': []
             }
 
-            # Extract annotations before class
+            # Extract annotations from the 200 chars before the class keyword
+            # Look for annotations that are on their own lines or directly before modifiers
+            class_text = content[max(0, start_pos - 200):start_pos]
+
+            # Only take annotations that appear after the last semicolon/brace (to avoid picking up other code)
+            last_delimiter = max(class_text.rfind(';'), class_text.rfind('}'), class_text.rfind('{'))
+            if last_delimiter >= 0:
+                class_text = class_text[last_delimiter + 1:]
+
             ann_pattern = r'@(\w+)'
-            class_text = content[max(0, start_pos - 500):start_pos]
             for ann_match in re.finditer(ann_pattern, class_text):
-                class_info['annotations'].append('@' + ann_match.group(1))
+                ann_name = '@' + ann_match.group(1)
+                if ann_name not in class_info['annotations']:
+                    class_info['annotations'].append(ann_name)
 
             result['classes'].append(class_info)
 

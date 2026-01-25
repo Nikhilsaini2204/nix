@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from commands import init, status
 from llm.client import get_api_key, save_api_key
+from config import cleanup_nix_folder
 
 
 def main():
@@ -59,11 +60,8 @@ def main():
         if args:
             # Initialize if needed
             if not nix_exists():
-                print("Project not initialized. Initializing first...")
-                print()
                 if not init.run():
                     sys.exit(1)
-                print()
 
             # Run the command
             user_input = " ".join(args)
@@ -74,6 +72,7 @@ def main():
         start_repl()
 
     except KeyboardInterrupt:
+        cleanup_nix_folder()
         print("\nGoodbye!")
         sys.exit(0)
     except Exception as e:
@@ -87,12 +86,9 @@ def start_repl():
 
     # Initialize if needed
     if not nix_exists():
-        print("Initializing nix...")
-        print()
         if not init.run():
             print("Failed to initialize. Exiting.")
             sys.exit(1)
-        print()
 
     # Register tools once at start
     from tools import register_all_tools
@@ -112,6 +108,7 @@ def start_repl():
 
             # Handle special commands
             if user_input.lower() in ("exit", "quit", "q"):
+                cleanup_nix_folder()
                 print("Goodbye!")
                 break
 
@@ -151,6 +148,7 @@ def start_repl():
                         # Not a menu choice, treat as natural language
                         run_natural_language(choice, tools_registered=True)
                 except KeyboardInterrupt:
+                    cleanup_nix_folder()
                     print("\nGoodbye!")
                     break
                 continue
@@ -159,9 +157,11 @@ def start_repl():
             run_natural_language(user_input, tools_registered=True)
 
         except KeyboardInterrupt:
+            cleanup_nix_folder()
             print("\nGoodbye!")
             break
         except EOFError:
+            cleanup_nix_folder()
             print("\nGoodbye!")
             break
 
@@ -220,10 +220,12 @@ def run_capability(capability):
 
 
 def print_welcome():
-    """Print welcome message."""
-    from utils.output import bold, muted
-    print(bold("nix") + " - AI assistant for Spring Boot projects")
-    print(muted("Type your question or command. Type 'help' for options, Ctrl+C to exit."))
+    """Print welcome message with ASCII banner."""
+    from utils.output import bold, muted, print_banner
+    print_banner()
+    print(muted("AI-powered assistant for Spring Boot projects"))
+    print(muted("Type your question or 'help' for options. Ctrl+C to exit."))
+    print()
 
 
 def print_repl_help():
