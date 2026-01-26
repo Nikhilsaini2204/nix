@@ -181,6 +181,23 @@ class Agent:
                 # No tool calls - LLM has final answer
                 content = response.get("content")
                 if content:
+                    # Check for off-topic marker - ONLY if no tools were called in this turn
+                    # (off-topic should only trigger on direct responses, not after tool usage)
+                    if content.startswith("[OFF_TOPIC]") and len(turn_tool_calls) == 0:
+                        from utils.output import print_off_topic_skull
+                        # Remove the marker and get the actual message
+                        actual_content = content.replace("[OFF_TOPIC]", "").strip()
+                        print_off_topic_skull("I'm specialized for Spring Boot projects!")
+                        self.conversation_history.append({
+                            "role": "assistant",
+                            "content": actual_content
+                        })
+                        return actual_content
+
+                    # Remove any accidental [OFF_TOPIC] marker from tool result summaries
+                    if content.startswith("[OFF_TOPIC]"):
+                        content = content.replace("[OFF_TOPIC]", "").strip()
+
                     self.conversation_history.append({
                         "role": "assistant",
                         "content": content
@@ -229,10 +246,13 @@ class Agent:
                             return summary
                     return "I've gathered some data. What would you like to know about your project?"
                 # No tool results - show rate limit message
-                from utils.output import warn
+                from utils.output import warn, print_error_ascii
+                print_error_ascii("Rate Limit Exceeded")
                 return warn(str(e))
             except json.JSONDecodeError as e:
                 # Handle malformed JSON from LLM
+                from utils.output import print_error_ascii
+                print_error_ascii("Processing Error")
                 error_msg = "I had trouble processing that request. Please try rephrasing your question."
                 self.conversation_history.append({
                     "role": "assistant",
@@ -240,15 +260,20 @@ class Agent:
                 })
                 return error_msg
             except Exception as e:
+                from utils.output import print_error_ascii
                 error_str = str(e)
                 # Provide more helpful error messages for common issues
                 if "API error" in error_str:
+                    print_error_ascii("API Error")
                     error_msg = f"There was an issue with the AI service: {error_str}"
                 elif "timeout" in error_str.lower():
+                    print_error_ascii("Timeout Error")
                     error_msg = "The request timed out. Please try again."
                 elif "connection" in error_str.lower():
+                    print_error_ascii("Connection Error")
                     error_msg = "Network connection issue. Please check your internet connection."
                 else:
+                    print_error_ascii("Error")
                     error_msg = f"An error occurred: {error_str}"
                 return error_msg
 

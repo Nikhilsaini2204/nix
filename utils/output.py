@@ -18,6 +18,54 @@ NIX_BANNER = """
 ════════════════════════
 """
 
+# Error ASCII art for response generation errors
+ERROR_ASCII = """
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠄⠀⠀⠀⠀⠀⠂⠀⠀⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⢂⠵⠊⠀⠁⡎⠔⠀⢸⣏⠰⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⣠⢀⡀⠀⠀⠀⠀⠀⠀⡠⠂⢠⣬⢀⡤⠄⡠⢄⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠰⠁⡉⠆⠀⠀⠜⠀⠁⠀⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣶⣿⣀⠉⠧⠚⠃⠢⡀⠀⠀⠘⠁⠠⢚⠇⠘⠁⡼⣽⣿⣷⣏⠧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡜⠀⡑⠀⠀⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⣼⣟⣹⣇⡷⣾⣻⣿⣻⣦⡌⢆⠀⠀⠀⠀⠈⠀⠀⠀⠉⠁⣻⠕⠉⠞⡁⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠐⠀⠅⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⣼⠿⣼⣃⣿⣿⣿⣿⣿⣿⣿⡿⡄⠄⠀⠀⠀⠀⠀⢠⣀⣃⡄⡛⡜⡘⠘⡀⠀⠀⠀⠀⠀⠀⠛⠀⠀⠀⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢰⣹⢃⣏⡇⣿⢹⠿⠿⠻⣿⣿⢉⠡⠈⡄⠀⠀⠀⠀⢎⣳⡏⠐⠄⣿⣷⡲⠁⠀⠀⠀⠀⠀⠀⠀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢀⣧⠏⢱⡛⢁⢡⠰⠊⠑⠒⣼⢇⢤⣄⣄⢹⠀⠀⠀⠘⢦⡝⠈⠈⠱⣛⢦⢉⠀⠀⠀⠀⠀⣴⢫⡟⡇⡇⠀⠀⠀⠀⠀⠀⢓⡤⣀⠀⡀⡀⠀⠀⣀⠀⠀⠀⢀⣀⣠⠀⠀⠀⠀⠀
+⣰⡛⠀⢠⠁⡄⢯⢿⣶⣾⣯⣟⡩⢌⠻⣯⠀⡄⠀⠀⠈⢅⣣⣶⣵⣶⣷⣦⣀⣀⣀⡀⠀⢀⣷⢫⣞⢷⡁⠀⠀⠀⠀⠀⠀⠀⠛⣷⣿⣿⣿⣿⣿⣿⣿⣶⣬⡽⡾⠁⠀⠀⠀⠀⠀
+⢯⣅⣷⢰⠠⢙⢪⡟⣼⢻⣟⣧⡴⠧⠉⠏⠄⠀⢀⣤⣾⣿⣿⣿⣿⣿⡿⠟⠻⠙⠛⠃⠀⣼⢎⡳⣜⡳⠄⠀⠀⠀⠀⠀⠀⠀⣰⠛⢿⣿⣿⠿⠿⣿⣿⣿⣿⣷⠁⠀⠀⠀⠀⠀⠀
+⢻⣾⡗⠈⣸⠈⢄⠹⣏⡷⣮⠁⣀⡀⠀⡞⢀⣶⣿⣿⣿⣿⣿⣿⣿⣿⣶⡦⠀⡭⠆⠀⠰⣿⠀⠒⢬⠱⠂⠀⠀⠀⠀⠀⠀⠀⣿⣿⠪⠿⣿⣶⣶⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀
+⣿⣿⠗⣀⠽⠐⣠⠀⠍⡛⢽⠤⢛⣛⠃⣡⣾⣿⣿⡟⠟⢻⣿⣿⡿⢟⠛⠀⠀⠈⠀⠀⠘⢿⠀⠈⠀⠃⠀⠀⠀⠀⠀⠀⠀⠀⣯⡘⠁⠚⠿⠿⣛⢿⣿⣿⣿⣿⡄⠀⠀⠀⠀⠀⠀
+⣿⠿⠚⠻⣗⣿⡟⠁⢰⡈⠈⠦⣠⣤⣾⣿⣿⣿⠛⠀⠀⠀⠙⠋⠄⠀⠀⠀⠀⠀⠀⠀⠀⠘⠀⠀⠀⡃⠀⠀⠀⠀⠀⠀⠀⠀⠿⠓⠎⠓⠒⠒⠭⠿⠿⠿⠿⠟⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢡⠑⡞⣯⠀⢠⣼⣿⣿⣿⣿⡏⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⡖⢲⠒⡆⣤⣤⣤⣤⡄⠀
+⠀⠀⠀⣀⠀⠀⠀⢣⠐⢃⣴⣾⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠠⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡇⠀⠉⠈⠛⣟⣿⣿⢿⣿⣿⣿⡿⢟⡛⠛⢋⣙⣿⣿⡇
+⢠⣶⣿⣿⣯⣄⠀⢸⣶⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠄⠀⠀⣀⠀⠀⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠉⠻⣥⠜⠁⠠⠐⢠⡆
+⣼⣿⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠓⠢⠁⠤⢠⣐⣀⣑⣂⣀⣀⣈⣀⣂⠁⡂⠀⠀⠈⠲⢶⠖⡿⠇
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢈⠀⠉⠀⠉⢉⡉⠭⢻⣿⣿⣿⡖
+"""
+
+# Skull ASCII art for off-topic questions
+OFF_TOPIC_SKULL = """
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡀⠀⠀⠀⠀⠀⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⡿⠇⠀⠀⠀⠀⢻⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡇⠀⠀⠀⠀⡸⣞⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⠀⠀⠀⢀⣧⢿⣽⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢴⣿⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠀⠀⠀⠀⣼⣞⡿⣞⡅⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠈⠓⢤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⠀⠀⠀⣰⣟⢾⣽⢫⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠙⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣠⢤⣶⡻⣞⣿⣺⢯⣽⣳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢠⣄⡀⠀⠀⠀⠀⠙⢦⡀⠀⠀⠀⠀⣀⣠⣤⣿⣽⣻⢾⣽⣷⣾⣽⣻⣞⣷⣳⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠈⢻⣿⣶⣄⡀⠀⠀⠀⣉⣲⣴⢶⣞⡿⣽⣞⡷⣯⢿⡽⣞⣿⠟⠋⠁⠉⠈⠳⣟⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢻⣿⣿⣿⣿⢶⣾⣿⡽⣯⣟⡾⣽⡷⣯⣟⡽⡾⣽⡯⠁⠀⠀⠀⠀⠀⠀⢮⣭⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠉⢞⣿⣿⢯⡿⣿⣯⣟⣷⣯⢿⣳⣟⡷⣽⣼⣻⣽⠀⠀⠀⠀⠀⠀⠀⢀⣼⡯⡗⠋⠤⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢾⣿⣿⣯⣽⣾⣿⣾⣗⡿⣯⡷⣯⣟⡷⣞⣼⣿⣀⠀⠀⠀⠀⢀⣠⡿⣏⡗⠈⠐⠈⠅⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢀⣼⠛⠏⠉⠉⠽⢟⢿⣿⣿⣿⣿⣷⣻⢾⡽⣞⡷⠄⡹⣶⢿⣻⢿⣻⡽⢯⣼⢦⠶⠁⠈⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⣸⣯⠇⠀⠀⠀⠀⠀⠁⣽⣿⣿⣿⣷⣯⣿⣽⣛⡦⠀⠀⢩⣿⣹⢯⣷⢻⣟⠺⢣⡖⣘⠤⠓⠀⠀⠀⠀⠀⠀
+⠀⠀⢈⣿⡃⠁⠀⠀⠀⢀⣤⣾⣟⢿⣻⣿⣿⣟⡾⣽⡳⠄⠎⢳⣯⢯⣟⡾⢯⣞⣯⣓⠉⢀⠀⠀⡄⢢⡀⠀⠀⠀
+⠀⠀⣸⣷⣷⣶⣳⣶⣺⣿⣿⣳⢯⣟⣿⣿⣳⢯⠛⠅⠃⠀⠀⣴⣿⡿⣬⢶⠾⠙⣊⣥⠾⡒⠊⢁⢠⠣⣌⠀⠀⠀
+⠀⠀⢺⡽⣾⡽⣯⣟⣿⡿⣯⣿⣿⣾⢿⣿⠳⢏⣈⢠⠀⠀⣰⢿⡿⣽⣉⡶⠌⠋⠉⣀⡀⠁⠀⠀⠀⣘⡐⣂⠀⠀
+⠀⠀⠘⣽⣳⣟⣳⣟⣾⣽⣿⣿⣿⣿⣿⣦⣜⡻⡽⠆⠧⣴⡟⣯⢟⡳⣭⠲⠄⠐⠀⠀⠀⠈⠁⠉⠑⢊⡕⢃⠄⠀
+⠀⠀⠀⠹⣿⣾⣿⣯⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⣾⢧⠀⠹⠾⡵⡞⡽⢢⣃⠐⠀⠀⠄⡐⠀⠀⠀⡘⢦⠘⣌⠀⠀
+⠀⠀⠀⠐⠹⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢯⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠒⡈⠀⡀⠄⡑⠢⣉⠴⣈⣆
+⠀⠀⠀⠀⠀⣀⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢯⣏⡴⣶⣵⣢⢤⢠⡀⡄⢠⠐⡰⢌⡱⠀⡁⡀⠆⡥⠆⡥⣛⡽⣾
+⠀⠀⡀⠔⠉⠀⠀⢽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣼⣻⢷⣯⡽⣞⣷⣻⡼⣡⢋⡔⠣⠜⡐⢐⠠⡓⣤⣙⣲⣽⣻⢷
+⠀⠀⠀⠀⠀⠀⠀⠘⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡿⣽⣞⣷⣻⡴⣣⢜⡱⣊⡕⣊⠠⡙⡰⣭⢷⣯⣿⢿
+"""
+
 
 def get_terminal_width():
     """Get terminal width, default to 80 if unavailable."""
@@ -73,6 +121,7 @@ class Colors:
     MAGENTA = "\033[35m"
     WHITE = "\033[37m"
     GRAY = "\033[90m"
+    ORANGE = "\033[38;5;208m"  # Vibrant orange like Claude Code
 
 
 def supports_color():
@@ -141,7 +190,7 @@ def print_separator():
 
 
 def print_banner():
-    """Print the nix ASCII art banner in blue, centered."""
+    """Print the nix ASCII art banner in cyan, centered."""
     banner_lines = NIX_BANNER.strip().split('\n')
     width = get_terminal_width()
 
@@ -151,10 +200,64 @@ def print_banner():
         padding = max(0, (width - len(line)) // 2)
         centered_line = ' ' * padding + line
         if _use_color:
-            print(f"{Colors.BLUE}{Colors.BOLD}{centered_line}{Colors.RESET}")
+            print(f"{Colors.CYAN}{Colors.BOLD}{centered_line}{Colors.RESET}")
         else:
             print(centered_line)
     print()  # Add bottom padding
+
+
+def print_off_topic_skull(message=None):
+    """Print the skull ASCII art for off-topic questions."""
+    skull_lines = OFF_TOPIC_SKULL.strip().split('\n')
+    width = get_terminal_width()
+
+    print()
+    for line in skull_lines:
+        # Center each line
+        padding = max(0, (width - len(line)) // 2)
+        centered_line = ' ' * padding + line
+        if _use_color:
+            print(f"{Colors.RED}{centered_line}{Colors.RESET}")
+        else:
+            print(centered_line)
+    print()
+
+    # Print the message below the skull
+    if message:
+        # Center the message
+        msg_padding = max(0, (width - len(message)) // 2)
+        if _use_color:
+            print(f"{Colors.YELLOW}{Colors.BOLD}{' ' * msg_padding}{message}{Colors.RESET}")
+        else:
+            print(' ' * msg_padding + message)
+        print()
+
+
+def print_error_ascii(message=None):
+    """Print the error ASCII art for response generation errors."""
+    error_lines = ERROR_ASCII.strip().split('\n')
+    width = get_terminal_width()
+
+    print()
+    for line in error_lines:
+        # Center each line
+        padding = max(0, (width - len(line)) // 2)
+        centered_line = ' ' * padding + line
+        if _use_color:
+            print(f"{Colors.RED}{centered_line}{Colors.RESET}")
+        else:
+            print(centered_line)
+    print()
+
+    # Print the error message below
+    if message:
+        # Center the message
+        msg_padding = max(0, (width - len(message)) // 2)
+        if _use_color:
+            print(f"{Colors.YELLOW}{Colors.BOLD}{' ' * msg_padding}{message}{Colors.RESET}")
+        else:
+            print(' ' * msg_padding + message)
+        print()
 
 
 # Status indicators
