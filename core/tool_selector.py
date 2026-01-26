@@ -197,6 +197,42 @@ def _filter_tools_by_groups(all_tools: List[Dict], groups: set) -> List[Dict]:
     return filtered_tools[:8]
 
 
+def is_meta_question(query: str) -> bool:
+    """
+    Detect if the query is a meta question about Nix itself.
+    These should be answered directly without tools.
+    """
+    query_lower = query.lower().strip()
+
+    meta_patterns = [
+        "who are you",
+        "what are you",
+        "what can you do",
+        "what do you do",
+        "your name",
+        "who made you",
+        "who created you",
+        "who built you",
+        "what is nix",
+        "what's nix",
+        "help me",
+        "how do i use",
+        "how to use",
+        "your capabilities",
+        "your features",
+    ]
+
+    for pattern in meta_patterns:
+        if pattern in query_lower:
+            return True
+
+    # Very short greetings
+    if query_lower in ["hi", "hello", "hey", "help", "?"]:
+        return True
+
+    return False
+
+
 def select_tools_for_query(query: str, all_tools: List[Dict]) -> List[Dict]:
     """
     Select only relevant tools based on user query to save tokens.
@@ -209,6 +245,10 @@ def select_tools_for_query(query: str, all_tools: List[Dict]) -> List[Dict]:
         Filtered list of relevant tool definitions
     """
     query_lower = query.lower()
+
+    # PRIORITY 0: Meta questions - return NO tools (LLM will respond directly)
+    if is_meta_question(query):
+        return []
 
     # Determine which tool groups are relevant
     relevant_groups = set()

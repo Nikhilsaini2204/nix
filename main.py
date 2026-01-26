@@ -220,11 +220,20 @@ def run_capability(capability):
 
 
 def print_welcome():
-    """Print welcome message with ASCII banner."""
-    from utils.output import bold, muted, print_banner
+    """Print welcome message with ASCII banner centered."""
+    from utils.output import bold, muted, print_banner, center_text, get_terminal_width
     print_banner()
-    print(muted("AI-powered assistant for Spring Boot projects"))
-    print(muted("Type your question or 'help' for options. Ctrl+C to exit."))
+
+    # Center the subtitle text
+    subtitle = "AI-powered assistant for Spring Boot projects"
+    hint = "Type your question or 'help' for options. Ctrl+C to exit."
+
+    width = get_terminal_width()
+    subtitle_padding = max(0, (width - len(subtitle)) // 2)
+    hint_padding = max(0, (width - len(hint)) // 2)
+
+    print(' ' * subtitle_padding + muted(subtitle))
+    print(' ' * hint_padding + muted(hint))
     print()
 
 

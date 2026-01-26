@@ -8,13 +8,44 @@ _quiet_mode = False
 
 # ASCII Art Banner for nix
 NIX_BANNER = """
-███╗   ██╗██╗██╗  ██╗
-████╗  ██║██║╚██╗██╔╝
-██╔██╗ ██║██║ ╚███╔╝
-██║╚██╗██║██║ ██╔██╗
-██║ ╚████║██║██╔╝ ██╗
-╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+███╗   ██╗ ██╗ ██╗  ██╗
+████╗  ██║ ██║ ╚██╗██╔╝
+██╔██╗ ██║ ██║  ╚███╔╝
+██║╚██╗██║ ██║  ██╔██╗
+██║ ╚████║ ██║ ██╔╝ ██╗
+╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝
+
+════════════════════════
 """
+
+
+def get_terminal_width():
+    """Get terminal width, default to 80 if unavailable."""
+    import shutil
+    try:
+        return shutil.get_terminal_size().columns
+    except Exception:
+        return 80
+
+
+def center_text(text):
+    """Center text in the terminal."""
+    width = get_terminal_width()
+    lines = text.split('\n')
+    centered_lines = []
+    for line in lines:
+        # Calculate padding (account for ANSI codes by using visible length)
+        visible_len = len(strip_ansi(line))
+        padding = max(0, (width - visible_len) // 2)
+        centered_lines.append(' ' * padding + line)
+    return '\n'.join(centered_lines)
+
+
+def strip_ansi(text):
+    """Remove ANSI escape codes from text."""
+    import re
+    ansi_pattern = re.compile(r'\x1b\[[0-9;]*m')
+    return ansi_pattern.sub('', text)
 
 
 def set_quiet_mode(enabled):
@@ -103,12 +134,27 @@ def muted(text):
     return color(text, Colors.GRAY)
 
 
+def print_separator():
+    """Print a subtle separator line."""
+    width = min(get_terminal_width(), 60)
+    print(muted("─" * width))
+
+
 def print_banner():
-    """Print the nix ASCII art banner in blue."""
-    if _use_color:
-        print(f"{Colors.BLUE}{Colors.BOLD}{NIX_BANNER}{Colors.RESET}")
-    else:
-        print(NIX_BANNER)
+    """Print the nix ASCII art banner in blue, centered."""
+    banner_lines = NIX_BANNER.strip().split('\n')
+    width = get_terminal_width()
+
+    print()  # Add some top padding
+    for line in banner_lines:
+        # Center each line
+        padding = max(0, (width - len(line)) // 2)
+        centered_line = ' ' * padding + line
+        if _use_color:
+            print(f"{Colors.BLUE}{Colors.BOLD}{centered_line}{Colors.RESET}")
+        else:
+            print(centered_line)
+    print()  # Add bottom padding
 
 
 # Status indicators

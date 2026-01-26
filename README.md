@@ -1,14 +1,19 @@
+<div align="center">
 
 ```
-███╗   ██╗██╗██╗  ██╗
-████╗  ██║██║╚██╗██╔╝
-██╔██╗ ██║██║ ╚███╔╝
-██║╚██╗██║██║ ██╔██╗
-██║ ╚████║██║██╔╝ ██╗
-╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+███╗   ██╗ ██╗ ██╗  ██╗
+████╗  ██║ ██║ ╚██╗██╔╝
+██╔██╗ ██║ ██║  ╚███╔╝
+██║╚██╗██║ ██║  ██╔██╗
+██║ ╚████║ ██║ ██╔╝ ██╗
+╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝
+
+════════════════════════
 ```
 
-**AI-powered CLI for Spring Boot projects**
+### AI-powered CLI for Spring Boot projects
+
+</div>
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](#requirements)
 [![License MIT](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -21,45 +26,47 @@ Talk to your Spring Boot project in plain English:
 ```
 $ nix
 
-███╗   ██╗██╗██╗  ██╗
-████╗  ██║██║╚██╗██╔╝
-██╔██╗ ██║██║ ╚███╔╝
-██║╚██╗██║██║ ██╔██╗
-██║ ╚████║██║██╔╝ ██╗
-╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+        ███╗   ██╗ ██╗ ██╗  ██╗
+        ████╗  ██║ ██║ ╚██╗██╔╝
+        ██╔██╗ ██║ ██║  ╚███╔╝
+        ██║╚██╗██║ ██║  ██╔██╗
+        ██║ ╚████║ ██║ ██╔╝ ██╗
+        ╚═╝  ╚═══╝ ╚═╝ ╚═╝  ╚═╝
 
-Spring Boot project detected
-Type 'help' for commands, 'exit' to quit
+        ════════════════════════
+
+    AI-powered assistant for Spring Boot projects
+    Type your question or 'help' for options. Ctrl+C to exit.
 
 > find issues in my code
 
-Using issue finder...
+Using 1 tool...
+⏺ find_issues
+  ⎿  Found 5 issues
 
-[BUILD] Compiling project...
-  ✓ Build successful
+[CRITICAL] Missing @Id annotation
+  at User.java:15
 
-[NULLSAFETY] Checking for potential NPEs...
-  - 3 potential null pointer issues found
+[HIGH] Potential null pointer
+  at UserService.java:42
 
-[BEANS] Checking dependency injection...
-  - 1 circular dependency detected
+[MEDIUM] Circular dependency detected
+  at OrderService.java:28
 
-[ANNOTATIONS] Validating annotations...
-  - @Entity without @Id in User.java
-
-=== Summary ===
-Critical: 1  |  Warning: 3  |  Info: 1
+Summary: Critical: 1 | High: 1 | Medium: 3
 
 > what endpoints do I have?
 
-⏺ Analyzing REST endpoints
-  ⎿ Found 12 endpoints in 3 controllers
+Using 1 tool...
+⏺ smart_query
+  ⎿  Found answer in context
 
-GET    /api/users
-GET    /api/users/{id}
-POST   /api/users
-DELETE /api/users/{id}
-GET    /api/products
+This project has 12 REST endpoints:
+- GET    /api/users
+- GET    /api/users/{id}
+- POST   /api/users
+- DELETE /api/users/{id}
+- GET    /api/products
 ...
 ```
 
