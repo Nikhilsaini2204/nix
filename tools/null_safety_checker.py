@@ -78,18 +78,25 @@ def check_null_safety(file_path: str = None, limit: int = 20) -> Dict[str, Any]:
 def find_java_files(project_root: str) -> List[str]:
     """Find all Java files in the project."""
     java_files = []
+    seen_files = set()  # Track to avoid duplicates
     src_dirs = ["src/main/java", "src"]
 
     for src_dir in src_dirs:
         src_path = os.path.join(project_root, src_dir)
         if os.path.exists(src_path):
             for root, _, files in os.walk(src_path):
-                # Skip test directories for main analysis
-                if 'test' in root.lower():
+                # Skip test directories (but not project names containing 'test')
+                rel_path = os.path.relpath(root, project_root)
+                if '/test/' in rel_path or rel_path.startswith('test/') or rel_path == 'test':
+                    continue
+                if 'src/test' in rel_path:
                     continue
                 for file in files:
                     if file.endswith('.java'):
-                        java_files.append(os.path.join(root, file))
+                        full_path = os.path.join(root, file)
+                        if full_path not in seen_files:
+                            seen_files.add(full_path)
+                            java_files.append(full_path)
 
     return java_files
 

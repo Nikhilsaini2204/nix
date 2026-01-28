@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from commands import init, status
 from llm.client import get_api_key, save_api_key
-from config import cleanup_nix_folder
 
 
 def main():
@@ -53,26 +52,27 @@ def main():
 
         # Handle explicit init command
         if command == "init":
-            init.run()
+            init.run(show_banner=True)
             return
 
         # If args provided, run as single command then start REPL
+        already_initialized = False
         if args:
             # Initialize if needed
             if not nix_exists():
-                if not init.run():
+                if not init.run(show_banner=True):
                     sys.exit(1)
+                already_initialized = True
 
             # Run the command
             user_input = " ".join(args)
             run_natural_language(user_input)
             print()
 
-        # Start interactive REPL
-        start_repl()
+        # Start interactive REPL (skip banner if we already showed it during init)
+        start_repl(skip_banner=already_initialized)
 
     except KeyboardInterrupt:
-        cleanup_nix_folder()
         print("\nGoodbye!")
         sys.exit(0)
     except Exception as e:
@@ -80,21 +80,30 @@ def main():
         sys.exit(1)
 
 
-def start_repl():
-    """Start the interactive REPL."""
+def start_repl(skip_banner=False):
+    """Start the interactive REPL.
+
+    Args:
+        skip_banner: If True, skip showing the banner (already shown during init)
+    """
     from config import nix_exists
+
+    # Track if we just initialized (to avoid showing banner twice)
+    just_initialized = False
 
     # Initialize if needed
     if not nix_exists():
         if not init.run():
             print("Failed to initialize. Exiting.")
             sys.exit(1)
+        just_initialized = True
 
     # Register tools once at start
     from tools import register_all_tools
     register_all_tools()
 
-    print_welcome()
+    # Show welcome (skip banner if we just initialized or caller said to skip)
+    print_welcome(skip_banner=just_initialized or skip_banner)
 
     while True:
         try:
@@ -108,7 +117,6 @@ def start_repl():
 
             # Handle special commands
             if user_input.lower() in ("exit", "quit", "q"):
-                cleanup_nix_folder()
                 print("Goodbye!")
                 break
 
@@ -148,7 +156,6 @@ def start_repl():
                         # Not a menu choice, treat as natural language
                         run_natural_language(choice, tools_registered=True)
                 except KeyboardInterrupt:
-                    cleanup_nix_folder()
                     print("\nGoodbye!")
                     break
                 continue
@@ -157,11 +164,9 @@ def start_repl():
             run_natural_language(user_input, tools_registered=True)
 
         except KeyboardInterrupt:
-            cleanup_nix_folder()
             print("\nGoodbye!")
             break
         except EOFError:
-            cleanup_nix_folder()
             print("\nGoodbye!")
             break
 
@@ -219,20 +224,27 @@ def run_capability(capability):
     print(response)
 
 
-def print_welcome():
-    """Print welcome message with ASCII banner centered."""
+def print_welcome(skip_banner=False):
+    """Print welcome message with ASCII banner centered.
+
+    Args:
+        skip_banner: If True, skip the banner (already shown during init)
+    """
     from utils.output import bold, muted, print_banner, center_text, get_terminal_width
-    print_banner()
 
-    # Center the subtitle text
-    subtitle = "AI-powered assistant for Spring Boot projects"
+    if not skip_banner:
+        print_banner()
+
+        # Center the subtitle text
+        subtitle = "AI-powered assistant for Spring Boot projects"
+        width = get_terminal_width()
+        subtitle_padding = max(0, (width - len(subtitle)) // 2)
+        print(' ' * subtitle_padding + muted(subtitle))
+
+    # Always show the hint
     hint = "Type your question or 'help' for options. Ctrl+C to exit."
-
     width = get_terminal_width()
-    subtitle_padding = max(0, (width - len(subtitle)) // 2)
     hint_padding = max(0, (width - len(hint)) // 2)
-
-    print(' ' * subtitle_padding + muted(subtitle))
     print(' ' * hint_padding + muted(hint))
     print()
 

@@ -110,6 +110,19 @@ def find_issues(include_build: bool = True, include_tests: bool = False,
     except Exception as e:
         errors.append(f"Annotation check failed: {str(e)}")
 
+    # Run security check
+    try:
+        from tools.security_checker import check_security
+        security_result = check_security(limit=limit)
+        if security_result.get('issues'):
+            for issue in security_result['issues']:
+                if 'category' not in issue:
+                    issue['category'] = 'security'
+            all_issues.extend(security_result['issues'])
+            category_counts['security'] = len(security_result['issues'])
+    except Exception as e:
+        errors.append(f"Security check failed: {str(e)}")
+
     set_quiet_mode(False)
 
     # Optional: Run tests
@@ -187,10 +200,11 @@ def prioritize_issues(issues: List[Dict]) -> List[Dict]:
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     category_order = {
         "compile_error": 0,
-        "test_failure": 1,
-        "bean_wiring": 2,
-        "null_safety": 3,
-        "annotations": 4
+        "security": 1,  # Security issues are high priority
+        "test_failure": 2,
+        "bean_wiring": 3,
+        "null_safety": 4,
+        "annotations": 5
     }
 
     return sorted(issues, key=lambda x: (
@@ -240,6 +254,15 @@ def generate_recommendations(issues: List[Dict], category_counts: Dict) -> List[
     if category_counts.get('annotations', 0) > 0:
         count = category_counts['annotations']
         recommendations.append(f"Review {count} annotation issue(s) for best practices")
+
+    # Security issues
+    if category_counts.get('security', 0) > 0:
+        count = category_counts['security']
+        critical_count = sum(1 for i in issues if i.get('category') == 'security' and i.get('severity') == 'critical')
+        if critical_count > 0:
+            recommendations.append(f"URGENT: Fix {critical_count} critical security vulnerabilities")
+        else:
+            recommendations.append(f"Address {count} security issue(s) to improve application security")
 
     if not recommendations:
         recommendations.append("No critical issues found. Consider running full build and tests for verification.")

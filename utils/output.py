@@ -456,3 +456,58 @@ def print_issues_summary(issues, title="Issues Found"):
         print(f"\n{muted(f'[{i}]')} {format_issue_with_snippet(issue)}")
 
     print(muted("─" * 50))
+
+
+class Spinner:
+    """Animated spinner for showing progress during long operations."""
+
+    def __init__(self, message="Loading"):
+        self.message = message
+        self.spinning = False
+        self.thread = None
+        self.frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.frame_index = 0
+
+    def _spin(self):
+        import time
+        while self.spinning:
+            frame = self.frames[self.frame_index]
+            # Clear line and print spinner
+            sys.stdout.write(f"\r{color(frame, Colors.CYAN)} {self.message}")
+            sys.stdout.flush()
+            self.frame_index = (self.frame_index + 1) % len(self.frames)
+            time.sleep(0.1)
+
+    def start(self):
+        """Start the spinner animation."""
+        import threading
+        self.spinning = True
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+
+    def stop(self, final_message=None):
+        """Stop the spinner and optionally show a final message."""
+        self.spinning = False
+        if self.thread:
+            self.thread.join(timeout=0.2)
+        # Clear the spinner line
+        sys.stdout.write("\r" + " " * (len(self.message) + 10) + "\r")
+        sys.stdout.flush()
+        if final_message:
+            print(final_message)
+
+    def update_message(self, message):
+        """Update the spinner message."""
+        self.message = message
+
+
+def print_indexing_banner():
+    """Print the nix banner with indexing message for first-time initialization."""
+    print_banner()
+
+    # Center the subtitle text
+    subtitle = "AI-powered assistant for Spring Boot projects"
+    width = get_terminal_width()
+    subtitle_padding = max(0, (width - len(subtitle)) // 2)
+    print(' ' * subtitle_padding + muted(subtitle))
+    print()

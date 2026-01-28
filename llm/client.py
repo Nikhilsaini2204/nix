@@ -5,8 +5,12 @@ from llm import prompts
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = "llama-3.1-8b-instant"  # Fast model for simple tasks
-AGENT_MODEL = "llama-3.1-8b-instant"  # Primary model (500k tokens available)
+AGENT_MODEL = "llama-3.1-8b-instant"  # Primary model
 FALLBACK_MODEL = "llama-3.3-70b-versatile"  # Fallback model
+
+# Context window limits (leaving room for response)
+MAX_CONTEXT_TOKENS = 5000  # Safe limit for 8b model (actual is ~8k but we leave room)
+CHARS_PER_TOKEN = 4  # Rough estimate: 4 characters per token
 
 
 CREDENTIALS_FILE = os.path.expanduser("~/.nix/credentials")
@@ -117,6 +121,89 @@ class RateLimitExhaustedError(Exception):
     pass
 
 
+class ContextTooLargeError(Exception):
+    """Raised when context exceeds model limits"""
+    pass
+
+
+def estimate_tokens(text):
+    """Estimate token count from text (rough approximation)."""
+    if not text:
+        return 0
+    return len(str(text)) // CHARS_PER_TOKEN
+
+
+def estimate_messages_tokens(messages):
+    """Estimate total tokens in messages."""
+    total = 0
+    for msg in messages:
+        total += estimate_tokens(msg.get("content", ""))
+        # Tool calls add extra tokens
+        if msg.get("tool_calls"):
+            total += estimate_tokens(json.dumps(msg["tool_calls"]))
+    return total
+
+
+def estimate_tools_tokens(tools):
+    """Estimate tokens in tool definitions."""
+    if not tools:
+        return 0
+    return estimate_tokens(json.dumps(tools))
+
+
+def trim_messages_to_fit(messages, tools, max_tokens=MAX_CONTEXT_TOKENS):
+    """
+    Trim messages to fit within token limit.
+    Keeps system prompt and most recent messages.
+    """
+    tools_tokens = estimate_tools_tokens(tools)
+    available_tokens = max_tokens - tools_tokens - 500  # Reserve 500 for response
+
+    if available_tokens < 1000:
+        # Tools taking too much space, reduce them
+        available_tokens = 1000
+
+    # Always keep system prompt
+    if not messages:
+        return messages
+
+    system_prompt = messages[0] if messages[0].get("role") == "system" else None
+    other_messages = messages[1:] if system_prompt else messages[:]
+
+    # Estimate system prompt tokens
+    system_tokens = estimate_tokens(system_prompt.get("content", "")) if system_prompt else 0
+    remaining_tokens = available_tokens - system_tokens
+
+    # Build trimmed messages from most recent
+    trimmed = []
+    current_tokens = 0
+
+    for msg in reversed(other_messages):
+        msg_tokens = estimate_tokens(msg.get("content", ""))
+        if msg.get("tool_calls"):
+            msg_tokens += estimate_tokens(json.dumps(msg["tool_calls"]))
+
+        if current_tokens + msg_tokens <= remaining_tokens:
+            trimmed.insert(0, msg)
+            current_tokens += msg_tokens
+        else:
+            # Try to truncate this message's content
+            if msg.get("role") == "tool" and msg_tokens > 500:
+                # Truncate tool result
+                content = msg.get("content", "")
+                max_content_chars = (remaining_tokens - current_tokens) * CHARS_PER_TOKEN
+                if max_content_chars > 200:
+                    truncated_msg = msg.copy()
+                    truncated_msg["content"] = content[:int(max_content_chars)] + "...(truncated)"
+                    trimmed.insert(0, truncated_msg)
+            break
+
+    # Reconstruct with system prompt
+    if system_prompt:
+        return [system_prompt] + trimmed
+    return trimmed
+
+
 def call_groq_with_tools(messages, tools=None, retry_count=0, use_fallback=False):
     """
     Make API call to Groq with function calling support.
@@ -137,6 +224,11 @@ def call_groq_with_tools(messages, tools=None, retry_count=0, use_fallback=False
 
     api_key = get_api_key()
     current_model = FALLBACK_MODEL if use_fallback else AGENT_MODEL
+
+    # Pre-flight check: estimate tokens and trim if needed
+    estimated_tokens = estimate_messages_tokens(messages) + estimate_tools_tokens(tools)
+    if estimated_tokens > MAX_CONTEXT_TOKENS:
+        messages = trim_messages_to_fit(messages, tools, MAX_CONTEXT_TOKENS)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -182,6 +274,17 @@ def call_groq_with_tools(messages, tools=None, retry_count=0, use_fallback=False
                 error_msg = error_data.get("error", {}).get("message", response.text)
             except:
                 error_msg = response.text
+
+            # Handle context length errors specially
+            if "context" in error_msg.lower() or "token" in error_msg.lower():
+                # Try with more aggressive trimming
+                if retry_count < 1:
+                    trimmed_messages = trim_messages_to_fit(messages, tools, MAX_CONTEXT_TOKENS // 2)
+                    return call_groq_with_tools(trimmed_messages, tools, retry_count + 1, use_fallback)
+                raise ContextTooLargeError(
+                    "Context too large even after trimming. Try a simpler question or start a new conversation."
+                )
+
             raise Exception(f"API error ({response.status_code}): {error_msg}")
 
         data = response.json()

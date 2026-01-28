@@ -22,6 +22,7 @@ from tools.bean_wiring_checker import register as register_bean_wiring_checker
 from tools.annotation_checker import register as register_annotation_checker
 from tools.issue_finder import register as register_issue_finder
 from tools.fix_suggester import register as register_fix_suggester
+from tools.security_checker import register as register_security_checker
 from tools.semantic_search import register as register_semantic_search
 from tools.error_diagnostics import register as register_error_diagnostics
 from tools.smart_query import register as register_smart_query
@@ -62,6 +63,7 @@ def register_all_tools():
     register_annotation_checker()
     register_issue_finder()
     register_fix_suggester()
+    register_security_checker()
 
     # Phase 4: Semantic search (RAG)
     register_semantic_search()

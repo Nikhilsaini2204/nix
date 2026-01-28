@@ -3,13 +3,14 @@ from config import create_nix_folder, save_config, get_default_config
 from core import detector
 
 
-def run(verbose=False):
-    """Run initialization command silently.
+def run(verbose=False, show_banner=True):
+    """Run initialization command with visual feedback.
 
     Args:
         verbose: If True, show detailed output (default: False)
+        show_banner: If True, show the nix banner during initialization (default: True)
     """
-    from utils.output import set_quiet_mode, muted
+    from utils.output import set_quiet_mode, muted, print_indexing_banner, Spinner
 
     # Check API key first
     from llm.client import get_api_key
@@ -39,6 +40,10 @@ def run(verbose=False):
     # Count Java files
     java_file_count = detector.count_java_files()
 
+    # Show banner and indexing message for Spring Boot projects
+    if show_banner:
+        print_indexing_banner()
+
     # Create .nix folder
     try:
         create_nix_folder()
@@ -60,6 +65,10 @@ def run(verbose=False):
         print(f"Error: {str(e)}")
         return False
 
+    # Start spinner for indexing
+    spinner = Spinner(f"Indexing {java_file_count} Java files...")
+    spinner.start()
+
     # Build code index silently
     from indexer.index_builder import IndexBuilder
     from indexer.index_storage import IndexStorage
@@ -75,6 +84,9 @@ def run(verbose=False):
         builder.build_index(force=is_first_init)
     except Exception:
         pass  # Continue even if index fails
+
+    # Update spinner message for context building
+    spinner.update_message("Building codebase context...")
 
     # Build codebase context silently
     try:
@@ -92,19 +104,23 @@ def run(verbose=False):
         deps_data = None
 
         try:
+            spinner.update_message("Analyzing endpoints...")
             ep_result = analyze_endpoints()
             if not ep_result.get("error"):
                 endpoints_data = ep_result.get("endpoints", [])
 
+            spinner.update_message("Analyzing entities...")
             ent_result = analyze_entities()
             if not ent_result.get("error"):
                 entities_data = ent_result.get("entities", [])
 
+            spinner.update_message("Analyzing configuration...")
             cfg_data = analyze_configuration()
             deps_data = analyze_dependencies()
         except Exception:
             pass
 
+        spinner.update_message("Finalizing index...")
         context_builder = ContextBuilder()
         context_builder.build_full_context(
             classes=index.get("classes", []) if index else [],
@@ -121,10 +137,8 @@ def run(verbose=False):
 
     set_quiet_mode(False)
 
-    # Show minimal success info
-    if verbose:
-        print(f"Spring Boot {version} • {java_file_count} Java files")
-    else:
-        print(muted(f"Spring Boot {version} • {java_file_count} files indexed"))
+    # Stop spinner and show completion message
+    from utils.output import success
+    spinner.stop(success(f"✓ Spring Boot {version} • {java_file_count} files indexed"))
 
     return True

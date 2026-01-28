@@ -1,14 +1,15 @@
 """Agentic loop for natural language processing."""
 
 import json
-from llm.client import call_groq_with_tools, RateLimitExhaustedError
+from llm.client import call_groq_with_tools, RateLimitExhaustedError, ContextTooLargeError
 from llm.system_prompts import get_system_prompt
 from core.tools_registry import get_tool_definitions, execute_tool, validate_tool_call
 from core.tool_selector import select_tools_for_query, get_minimal_tool_definitions
+from core.context_retriever import get_relevant_context, reset_retriever
 
 
 MAX_ITERATIONS = 10
-MAX_TOOL_RESULT_SIZE = 8000  # Limit tool results to prevent context overflow
+MAX_TOOL_RESULT_SIZE = 3000  # Reduced limit to prevent context overflow
 
 
 def truncate_result(result, max_size=MAX_TOOL_RESULT_SIZE):
@@ -17,37 +18,47 @@ def truncate_result(result, max_size=MAX_TOOL_RESULT_SIZE):
     if len(result_str) <= max_size:
         return result
 
-    # If result has a 'tree' field (from explore_project), truncate it
     if isinstance(result, dict):
-        if 'tree' in result and len(result['tree']) > max_size // 2:
-            result = result.copy()
-            result['tree'] = result['tree'][:max_size // 2] + "\n... (truncated)"
+        result = result.copy()
+
+        # If result has a summary, prioritize keeping that
+        summary = result.get('summary', '')
+
+        # Aggressively truncate large lists
+        list_fields = ['results', 'endpoints', 'services', 'entities', 'classes',
+                       'methods', 'dependencies', 'issues', 'controllers', 'repositories']
+
+        for field in list_fields:
+            if field in result and isinstance(result[field], list):
+                # Keep only first 10 items max
+                if len(result[field]) > 10:
+                    result[field] = result[field][:10]
+                    result['truncated'] = True
+
+        # Truncate tree field
+        if 'tree' in result and len(str(result['tree'])) > 1000:
+            result['tree'] = str(result['tree'])[:1000] + "\n... (truncated)"
             result['truncated'] = True
-            return result
 
-        # If result has 'results' list (from search_code), limit entries
-        if 'results' in result and isinstance(result['results'], list):
-            result = result.copy()
-            if len(json.dumps(result['results'])) > max_size:
-                result['results'] = result['results'][:20]
-                result['truncated'] = True
-            return result
+        # Remove verbose fields if still too large
+        result_str = json.dumps(result)
+        if len(result_str) > max_size:
+            # Remove less important fields
+            for field in ['file_path', 'file', 'source', 'code', 'content', 'details']:
+                if field in result:
+                    del result[field]
 
-        # If result has 'dependencies' list, limit entries
-        if 'dependencies' in result and isinstance(result['dependencies'], list):
-            result = result.copy()
-            if len(result['dependencies']) > 50:
-                result['dependencies'] = result['dependencies'][:50]
-                result['truncated'] = True
-            return result
+        # Final check - if still too large, keep only summary and counts
+        result_str = json.dumps(result)
+        if len(result_str) > max_size:
+            compact = {'summary': summary, 'truncated': True}
+            for field in list_fields:
+                if field in result and isinstance(result[field], list):
+                    compact[f'{field}_count'] = len(result[field])
+                    compact[field] = result[field][:5]  # Keep only 5
+            return compact
 
-        # If result has 'classes' list, limit entries
-        if 'classes' in result and isinstance(result['classes'], list):
-            result = result.copy()
-            if len(result['classes']) > 30:
-                result['classes'] = result['classes'][:30]
-                result['truncated'] = True
-            return result
+        return result
 
     return result
 
@@ -55,7 +66,8 @@ def truncate_result(result, max_size=MAX_TOOL_RESULT_SIZE):
 class Agent:
     """Stateful agent that maintains conversation history."""
 
-    MAX_HISTORY_LENGTH = 12  # Keep last N messages to avoid context overflow
+    MAX_HISTORY_LENGTH = 8  # Keep last N messages to avoid context overflow
+    MAX_HISTORY_CHARS = 8000  # Maximum characters in history (rough token estimate)
 
     def __init__(self):
         self.conversation_history = [
@@ -66,11 +78,18 @@ class Agent:
 
     def _trim_history(self):
         """Trim conversation history to avoid context overflow."""
+        # First, trim by message count
         if len(self.conversation_history) > self.MAX_HISTORY_LENGTH:
-            # Keep system prompt + last N messages
             system_prompt = self.conversation_history[0]
             recent = self.conversation_history[-(self.MAX_HISTORY_LENGTH - 1):]
             self.conversation_history = [system_prompt] + recent
+
+        # Then, trim by total size (more aggressive)
+        total_chars = sum(len(json.dumps(msg)) for msg in self.conversation_history)
+        while total_chars > self.MAX_HISTORY_CHARS and len(self.conversation_history) > 2:
+            # Remove oldest non-system message
+            self.conversation_history.pop(1)
+            total_chars = sum(len(json.dumps(msg)) for msg in self.conversation_history)
 
     def run(self, user_input):
         """
@@ -85,10 +104,24 @@ class Agent:
         # Trim history to avoid context overflow
         self._trim_history()
 
+        # Get relevant context for this query (smart retrieval - like Claude Code)
+        relevant_context = get_relevant_context(user_input)
+
+        # Build user message with context
+        if relevant_context and not relevant_context.startswith("No project context"):
+            # Include context only if it's meaningful and not too long
+            if len(relevant_context) < 4000:
+                user_message = f"[Project Context]\n{relevant_context}\n\n[User Question]\n{user_input}"
+            else:
+                # Context too long, truncate
+                user_message = f"[Project Context]\n{relevant_context[:3000]}...\n\n[User Question]\n{user_input}"
+        else:
+            user_message = user_input
+
         # Add user message to history
         self.conversation_history.append({
             "role": "user",
-            "content": user_input
+            "content": user_message
         })
 
         # Select relevant tools for this query (saves tokens!)
@@ -249,6 +282,16 @@ class Agent:
                 from utils.output import warn, print_error_ascii
                 print_error_ascii("Rate Limit Exceeded")
                 return warn(str(e))
+            except ContextTooLargeError as e:
+                # Context too large - clear history and retry with just this query
+                from utils.output import warn
+                self.clear_history()
+                self.conversation_history.append({
+                    "role": "user",
+                    "content": user_input  # Original input without context
+                })
+                error_msg = warn("Context was too large. Starting fresh conversation. Please try your question again.")
+                return error_msg
             except json.JSONDecodeError as e:
                 # Handle malformed JSON from LLM
                 from utils.output import print_error_ascii
@@ -371,6 +414,8 @@ def reset_agent():
     """Reset the agent (clear history)."""
     global _agent_instance
     _agent_instance = None
+    # Also reset context retriever to reload any updated context
+    reset_retriever()
 
 
 def run_agent(user_input):
