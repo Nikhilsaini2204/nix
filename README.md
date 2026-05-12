@@ -9,6 +9,27 @@
 
 ---
 
+---
+
+## 👨‍💻 Team & Contributors
+
+| Name         | Roll Number |
+| ------------ | ----------- |
+| Nikhil Saini | 2211981245  |
+| Akshit Mehta | 2211981043  |
+
+---
+
+## 🎓 Mentors
+
+| Name             | Email                                                               |
+| ---------------- | ------------------------------------------------------------------- |
+| Dr. Rajat Takkar | [rajat.takkar@chitkara.edu.in](mailto:rajat.takkar@chitkara.edu.in) |
+| Isha Kansal      | [isha.kansal@chitkatra.edu.in](mailto:isha.kansal@chitkatra.edu.in) |
+
+---
+
+
 Talk to your Spring Boot project in plain English:
 
 ```
