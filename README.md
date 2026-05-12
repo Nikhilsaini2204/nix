@@ -1,5 +1,5 @@
 
-### AI-powered CLI for Spring Boot projects
+### Nix - AI Terminal Coding Assistant
 
 </div>
 
@@ -8,10 +8,10 @@
 [![Powered by Groq](https://img.shields.io/badge/powered%20by-Groq-orange.svg)](https://groq.com)
 
 ---
+### Type : Copyright
 
 ---
-
-## 👨‍💻 Team & Contributors
+### 👨‍💻 Team & Contributors
 
 | Name         | Roll Number |
 | ------------ | ----------- |
@@ -20,7 +20,7 @@
 
 ---
 
-## 🎓 Mentors
+### 🎓 Mentors
 
 | Name             | Email                                                               |
 | ---------------- | ------------------------------------------------------------------- |
