@@ -25,7 +25,7 @@
 | Name             | Email                                                               |
 | ---------------- | ------------------------------------------------------------------- |
 | Dr. Rajat Takkar | [rajat.takkar@chitkara.edu.in](mailto:rajat.takkar@chitkara.edu.in) |
-| Isha Kansal      | [isha.kansal@chitkatra.edu.in](mailto:isha.kansal@chitkatra.edu.in) |
+| Isha Kansal      | [isha.kansal@chitkara.edu.in](mailto:isha.kansal@chitkara.edu.in) |
 
 ---
 
